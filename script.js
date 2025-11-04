@@ -415,6 +415,7 @@ class PoolTournamentApp {
                         </div>
                     ` : '<div class="bye-indicator">BYE</div>'}
                 </div>
+                ${this.renderMatchDateTime(match)}
                 ${isCompleted ? `
                     <div class="match-result" style="text-align: center; margin-top: 0.5rem; font-size: 0.85rem;">
                         <strong style="color: #28a745;">🏆 ${this.truncateName(match.winner?.name || 'Unknown')}</strong>
@@ -427,6 +428,31 @@ class PoolTournamentApp {
     truncateName(name, maxLength = 12) {
         if (!name) return 'Unknown';
         return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+    }
+
+    renderMatchDateTime(match) {
+        if (!match.scheduledDate && !match.scheduledTime) {
+            return '';
+        }
+
+        let dateTimeText = '';
+        if (match.scheduledDate) {
+            const date = new Date(match.scheduledDate);
+            dateTimeText = date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+        if (match.scheduledTime) {
+            if (dateTimeText) dateTimeText += ' ';
+            dateTimeText += match.scheduledTime;
+        }
+
+        return `
+            <div class="match-datetime" style="text-align: center; font-size: 0.75rem; color: #666; margin-top: 0.25rem;">
+                📅 ${dateTimeText}
+            </div>
+        `;
     }
     
     async recordMatchResult(matchId, winnerId) {
@@ -749,9 +775,28 @@ class PoolTournamentApp {
                 </div>
             `;
         } else {
+            let scheduleInfo = '';
+            if (match.scheduledDate || match.scheduledTime) {
+                let dateTimeText = '';
+                if (match.scheduledDate) {
+                    const date = new Date(match.scheduledDate);
+                    dateTimeText = date.toLocaleDateString('en-US', { 
+                        weekday: 'short',
+                        month: 'short', 
+                        day: 'numeric' 
+                    });
+                }
+                if (match.scheduledTime) {
+                    if (dateTimeText) dateTimeText += ' at ';
+                    dateTimeText += match.scheduledTime;
+                }
+                scheduleInfo = `<div style="margin-top: 0.5rem; color: #666;">📅 Scheduled: ${dateTimeText}</div>`;
+            }
+            
             statusContainer.innerHTML = `
                 <div class="pending">
                     <strong>🔄 Match ready to play</strong>
+                    ${scheduleInfo}
                 </div>
             `;
         }
@@ -760,12 +805,24 @@ class PoolTournamentApp {
         const actionsContainer = document.getElementById('match-detail-actions');
         if (!isCompleted && !isBye && match.player1 && match.player2 && this.isAdminLoggedIn) {
             actionsContainer.innerHTML = `
-                <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player1.id})">
-                    ${match.player1.name} Wins
-                </button>
-                <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player2.id})">
-                    ${match.player2.name} Wins
-                </button>
+                <div class="match-scheduling" style="margin-bottom: 1rem;">
+                    <h4 style="margin-bottom: 0.5rem;">Schedule Match</h4>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <input type="date" id="match-date-${match.id}" value="${match.scheduledDate || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
+                        <input type="time" id="match-time-${match.id}" value="${match.scheduledTime || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
+                        <button class="btn btn-primary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="app.scheduleMatchFromDetail(${match.id})">
+                            Set Schedule
+                        </button>
+                    </div>
+                </div>
+                <div class="match-result-buttons">
+                    <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player1.id})">
+                        ${match.player1.name} Wins
+                    </button>
+                    <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player2.id})">
+                        ${match.player2.name} Wins
+                    </button>
+                </div>
             `;
         } else if (!this.isAdminLoggedIn && !isCompleted && match.player1 && match.player2) {
             actionsContainer.innerHTML = `
@@ -782,6 +839,35 @@ class PoolTournamentApp {
         await this.recordMatchResult(matchId, winnerId);
         // Close modal and refresh
         document.getElementById('match-detail-modal').style.display = 'none';
+    }
+
+    async scheduleMatchFromDetail(matchId) {
+        const date = document.getElementById(`match-date-${matchId}`).value;
+        const time = document.getElementById(`match-time-${matchId}`).value;
+
+        if (!date && !time) {
+            alert('Please select a date and/or time for the match');
+            return;
+        }
+
+        try {
+            await this.tournamentManager.scheduleMatch(matchId, date, time, this.adminPassword);
+            
+            // Refresh bracket display
+            this.bracket = this.tournamentManager.getBrackets();
+            this.renderBracket();
+            
+            // Update the modal with the new schedule
+            const match = this.findMatchById(matchId);
+            if (match) {
+                this.renderMatchDetail(match);
+            }
+            
+            alert('Match scheduled successfully!');
+        } catch (error) {
+            console.error('Error scheduling match:', error);
+            alert(error.message || 'Error scheduling match');
+        }
     }
 }
 

@@ -117,7 +117,9 @@ class TournamentManager {
                     player1: shuffled[i],
                     player2: shuffled[i + 1],
                     winner: null,
-                    completed: false
+                    completed: false,
+                    scheduledDate: null,
+                    scheduledTime: null
                 });
             } else {
                 // Bye for odd number of participants
@@ -126,7 +128,9 @@ class TournamentManager {
                     player1: shuffled[i],
                     player2: null,
                     winner: shuffled[i],
-                    completed: true
+                    completed: true,
+                    scheduledDate: null,
+                    scheduledTime: null
                 });
             }
         }
@@ -146,7 +150,9 @@ class TournamentManager {
                         player1: null,
                         player2: null,
                         winner: null,
-                        completed: false
+                        completed: false,
+                        scheduledDate: null,
+                        scheduledTime: null
                     });
                 } else if (winnersCount % 2 === 1) {
                     nextRoundMatches.push({
@@ -154,7 +160,9 @@ class TournamentManager {
                         player1: null,
                         player2: null,
                         winner: null,
-                        completed: false
+                        completed: false,
+                        scheduledDate: null,
+                        scheduledTime: null
                     });
                 }
             }
@@ -286,6 +294,32 @@ class TournamentManager {
         this.setParticipants(participants);
         
         return { success: true, message: `Participant ${participant.name} removed successfully` };
+    }
+
+    async scheduleMatch(matchId, date, time, password) {
+        if (!this.checkAdminPassword(password)) {
+            throw new Error('Invalid admin password');
+        }
+
+        const bracket = this.getBrackets();
+        let matchFound = false;
+
+        for (let round of bracket.rounds) {
+            const match = round.matches.find(m => m.id === matchId);
+            if (match) {
+                match.scheduledDate = date;
+                match.scheduledTime = time;
+                matchFound = true;
+                break;
+            }
+        }
+
+        if (!matchFound) {
+            throw new Error('Match not found');
+        }
+
+        this.setBrackets(bracket);
+        return { success: true, message: 'Match scheduled successfully' };
     }
 }
 
