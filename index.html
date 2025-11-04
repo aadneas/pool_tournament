@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎱 Bryne Robotics Ultimate Pool Tournament 🎱</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🎱 Bryne Robotics Ultimate Pool Tournament 🎱</h1>
+        <nav>
+            <button class="nav-btn active" data-section="participants">Participants</button>
+            <button class="nav-btn" data-section="brackets">Brackets</button>
+            <button class="nav-btn" data-section="results">Results</button>
+            <button class="nav-btn admin-btn" data-section="admin">🔒 Admin</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Participants Section -->
+        <section id="participants" class="section active">
+            <div class="section-header">
+                <h2>Tournament Participants</h2>
+                <button id="add-participant-btn" class="btn btn-primary">🔒 Add Participant (Admin)</button>
+            </div>
+            
+            <div id="add-participant-form" class="form-container" style="display: none;">
+                <h3>Add New Participant (Admin Required)</h3>
+                <form id="participant-form">
+                    <input type="text" id="participant-name" placeholder="Enter participant name" required>
+                    <button type="submit" class="btn btn-success">Add Participant</button>
+                    <button type="button" id="cancel-add" class="btn btn-secondary">Cancel</button>
+                </form>
+            </div>
+
+            <div id="participants-grid" class="participants-grid"></div>
+        </section>
+
+        <!-- Brackets Section -->
+        <section id="brackets" class="section">
+            <div class="section-header">
+                <h2>Tournament Bracket</h2>
+                <button id="generate-bracket-btn" class="btn btn-primary">🔒 Generate Bracket (Admin)</button>
+            </div>
+            
+            <div id="bracket-container"></div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="section">
+            <div class="section-header">
+                <h2>Match Results</h2>
+            </div>
+            
+            <div id="results-container"></div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin" class="section">
+            <div class="section-header">
+                <h2>🔒 Admin Panel</h2>
+            </div>
+            
+            <div id="admin-login" class="admin-login">
+                <div class="admin-login-form">
+                    <h3>Admin Authentication Required</h3>
+                    <p>Enter the admin password to access management functions</p>
+                    <form id="admin-login-form">
+                        <input type="password" id="admin-password" placeholder="Enter admin password" required>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="admin-panel" class="admin-panel" style="display: none;">
+                <div class="admin-section">
+                    <h3>Participant Management</h3>
+                    <div id="admin-participants-list" class="admin-participants"></div>
+                </div>
+                
+                <div class="admin-section">
+                    <h3>Tournament Management</h3>
+                    <div class="admin-actions">
+                        <button id="reset-tournament-btn" class="btn btn-danger">Reset Tournament Results</button>
+                        <button id="reset-all-btn" class="btn btn-danger">Reset Everything</button>
+                    </div>
+                    <div class="admin-warning">
+                        <p><strong>Warning:</strong> These actions cannot be undone!</p>
+                        <ul>
+                            <li><strong>Reset Tournament Results:</strong> Clears brackets and results, keeps participants</li>
+                            <li><strong>Reset Everything:</strong> Removes all participants, results, and uploaded images</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="admin-section">
+                    <button id="admin-logout-btn" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Image Upload Modal -->
+    <div id="image-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Upload Player Image</h3>
+            <form id="image-upload-form">
+                <input type="file" id="image-input" accept="image/*" required>
+                <button type="submit" class="btn btn-primary">Upload Image</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Match Detail Modal -->
+    <div id="match-detail-modal" class="match-detail-modal">
+        <div class="match-detail-content">
+            <div class="match-detail-header">
+                <span class="match-detail-close">&times;</span>
+                <div class="match-detail-round" id="match-detail-round"></div>
+                <h2 class="match-detail-title" id="match-detail-title">Match Details</h2>
+            </div>
+            <div class="match-detail-body">
+                <div class="match-detail-players" id="match-detail-players">
+                    <!-- Players will be inserted here -->
+                </div>
+                <div class="match-detail-status" id="match-detail-status">
+                    <!-- Status will be inserted here -->
+                </div>
+                <div class="match-detail-actions" id="match-detail-actions">
+                    <!-- Actions will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
