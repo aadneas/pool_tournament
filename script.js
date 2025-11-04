@@ -7,6 +7,7 @@ class PoolTournamentApp {
         this.selectedParticipantId = null;
         this.isAdminLoggedIn = false;
         this.adminPassword = null;
+        this.tournamentManager = window.tournamentManager;
         
         this.init();
     }
@@ -126,8 +127,7 @@ class PoolTournamentApp {
     
     async loadParticipants() {
         try {
-            const response = await fetch('/api/participants');
-            this.participants = await response.json();
+            this.participants = this.tournamentManager.getParticipants();
             this.renderParticipants();
         } catch (error) {
             console.error('Error loading participants:', error);
@@ -144,27 +144,14 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch('/api/participants', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ name, password: this.adminPassword }),
-            });
-            
-            if (response.ok) {
-                const newParticipant = await response.json();
-                this.participants.push(newParticipant);
-                this.renderParticipants();
-                this.hideAddParticipantForm();
-                document.getElementById('participant-name').value = '';
-            } else {
-                const error = await response.json();
-                alert(error.error || 'Failed to add participant');
-            }
+            const newParticipant = await this.tournamentManager.addParticipant(name, this.adminPassword);
+            this.participants = this.tournamentManager.getParticipants();
+            this.renderParticipants();
+            this.hideAddParticipantForm();
+            document.getElementById('participant-name').value = '';
         } catch (error) {
             console.error('Error adding participant:', error);
-            alert('Error adding participant');
+            alert(error.message || 'Error adding participant');
         }
     }
     
@@ -223,28 +210,18 @@ class PoolTournamentApp {
         
         if (!file || !this.selectedParticipantId) return;
         
-        const formData = new FormData();
-        formData.append('image', file);
-        
         try {
-            const response = await fetch(`/api/participants/${this.selectedParticipantId}/image`, {
-                method: 'POST',
-                body: formData,
-            });
-            
-            const updatedParticipant = await response.json();
+            const updatedParticipant = await this.tournamentManager.uploadParticipantImage(this.selectedParticipantId, file);
             
             // Update local data
-            const index = this.participants.findIndex(p => p.id === this.selectedParticipantId);
-            if (index !== -1) {
-                this.participants[index] = updatedParticipant;
-            }
+            this.participants = this.tournamentManager.getParticipants();
             
             this.renderParticipants();
             document.getElementById('image-modal').style.display = 'none';
             fileInput.value = '';
         } catch (error) {
             console.error('Error uploading image:', error);
+            alert(error.message || 'Error uploading image');
         }
     }
     
@@ -260,31 +237,17 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch('/api/brackets/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password: this.adminPassword }),
-            });
-            
-            if (response.ok) {
-                this.bracket = await response.json();
-                this.renderBracket();
-            } else {
-                const error = await response.json();
-                alert(error.error || 'Failed to generate bracket');
-            }
+            this.bracket = await this.tournamentManager.generateBracket(this.adminPassword);
+            this.renderBracket();
         } catch (error) {
             console.error('Error generating bracket:', error);
-            alert('Error generating bracket');
+            alert(error.message || 'Error generating bracket');
         }
     }
     
     async loadBracket() {
         try {
-            const response = await fetch('/api/brackets');
-            this.bracket = await response.json();
+            this.bracket = this.tournamentManager.getBrackets();
             this.renderBracket();
         } catch (error) {
             console.error('Error loading bracket:', error);
@@ -473,37 +436,22 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch(`/api/matches/${matchId}/result`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ winnerId, password: this.adminPassword }),
-            });
+            const result = await this.tournamentManager.recordMatchResult(matchId, winnerId, this.adminPassword);
+            this.bracket = result.bracket;
             
-            if (response.ok) {
-                const result = await response.json();
-                this.bracket = result.bracket;
-                
-                // Refresh all data
-                await this.loadParticipants();
-                this.renderBracket();
-                this.loadResults();
-            } else {
-                const error = await response.json();
-                console.error('Match result error:', error);
-                alert(error.error || 'Failed to record match result');
-            }
+            // Refresh all data
+            this.participants = this.tournamentManager.getParticipants();
+            this.renderBracket();
+            this.loadResults();
         } catch (error) {
             console.error('Error recording match result:', error);
-            alert('Error recording match result: ' + error.message);
+            alert(error.message || 'Error recording match result');
         }
     }
     
     async loadResults() {
         try {
-            const response = await fetch('/api/results');
-            this.results = await response.json();
+            this.results = this.tournamentManager.getResults();
             this.renderResults();
         } catch (error) {
             console.error('Error loading results:', error);
@@ -572,15 +520,7 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch('/api/admin/auth', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password }),
-            });
-            
-            if (response.ok) {
+            if (this.tournamentManager.checkAdminPassword(password)) {
                 this.isAdminLoggedIn = true;
                 this.adminPassword = password; // Store for later requests
                 this.loadAdminPanel();
@@ -591,7 +531,7 @@ class PoolTournamentApp {
             }
         } catch (error) {
             console.error('Error during admin login:', error);
-            alert('Error connecting to server');
+            alert('Error during login');
         }
     }
     
@@ -634,26 +574,13 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch(`/api/admin/participants/${participantId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password: this.adminPassword }),
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                alert(result.message);
-                await this.loadParticipants();
-                this.renderAdminParticipants();
-            } else {
-                alert(result.error || 'Failed to remove participant');
-            }
+            const result = await this.tournamentManager.removeParticipant(participantId, this.adminPassword);
+            alert(result.message);
+            this.participants = this.tournamentManager.getParticipants();
+            this.renderAdminParticipants();
         } catch (error) {
             console.error('Error removing participant:', error);
-            alert('Error removing participant');
+            alert(error.message || 'Error removing participant');
         }
     }
     
@@ -663,28 +590,18 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch('/api/admin/reset-tournament', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password: this.adminPassword }),
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                alert(result.message);
-                await this.loadParticipants();
-                await this.loadBracket();
-                await this.loadResults();
-                this.renderAdminParticipants();
-            } else {
-                alert(result.error || 'Failed to reset tournament');
-            }
+            const result = await this.tournamentManager.resetTournament(this.adminPassword);
+            alert(result.message);
+            this.participants = this.tournamentManager.getParticipants();
+            this.bracket = this.tournamentManager.getBrackets();
+            this.results = this.tournamentManager.getResults();
+            this.renderParticipants();
+            this.renderBracket();
+            this.renderResults();
+            this.renderAdminParticipants();
         } catch (error) {
             console.error('Error resetting tournament:', error);
-            alert('Error resetting tournament');
+            alert(error.message || 'Error resetting tournament');
         }
     }
     
@@ -694,28 +611,18 @@ class PoolTournamentApp {
         }
         
         try {
-            const response = await fetch('/api/admin/reset-all', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ password: this.adminPassword }),
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                alert(result.message);
-                await this.loadParticipants();
-                await this.loadBracket();
-                await this.loadResults();
-                this.renderAdminParticipants();
-            } else {
-                alert(result.error || 'Failed to reset all data');
-            }
+            const result = await this.tournamentManager.resetAll(this.adminPassword);
+            alert(result.message);
+            this.participants = this.tournamentManager.getParticipants();
+            this.bracket = this.tournamentManager.getBrackets();
+            this.results = this.tournamentManager.getResults();
+            this.renderParticipants();
+            this.renderBracket();
+            this.renderResults();
+            this.renderAdminParticipants();
         } catch (error) {
             console.error('Error resetting all data:', error);
-            alert('Error resetting all data');
+            alert(error.message || 'Error resetting all data');
         }
     }
     
