@@ -1,0 +1,154 @@
+[
+  {
+    "id": 1762240373472,
+    "matchId": 1762239623719,
+    "winner": {
+      "id": 1762180758446,
+      "name": "Ådne",
+      "image": "/images/player-1762180891538-544876540.png",
+      "wins": 1,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762180786341,
+      "name": "John",
+      "image": null,
+      "wins": 0,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:12:53.472Z"
+  },
+  {
+    "id": 1762241855394,
+    "matchId": 1762239623713,
+    "winner": {
+      "id": 1699123456792,
+      "name": "David Wilson",
+      "image": "/images/player-1762240358445-226854040.jpg",
+      "wins": 1,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762181633240,
+      "name": "Loser",
+      "image": null,
+      "wins": 0,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:35.394Z"
+  },
+  {
+    "id": 1762241860040,
+    "matchId": 1762239623715,
+    "winner": {
+      "id": 1762182554981,
+      "name": "Allah",
+      "image": null,
+      "wins": 1,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762182525364,
+      "name": "Jackie",
+      "image": null,
+      "wins": 0,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:40.040Z"
+  },
+  {
+    "id": 1762241863247,
+    "matchId": 1762239623717,
+    "winner": {
+      "id": 1762182563555,
+      "name": "Fish",
+      "image": null,
+      "wins": 1,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762182517921,
+      "name": "Bob",
+      "image": null,
+      "wins": 0,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:43.247Z"
+  },
+  {
+    "id": 1762241865827,
+    "matchId": 1762239625715,
+    "winner": {
+      "id": 1762180758446,
+      "name": "Ådne",
+      "image": "/images/player-1762180891538-544876540.png",
+      "wins": 2,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762182563555,
+      "name": "Fish",
+      "image": null,
+      "wins": 1,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:45.827Z"
+  },
+  {
+    "id": 1762241867459,
+    "matchId": 1762239625713,
+    "winner": {
+      "id": 1762182554981,
+      "name": "Allah",
+      "image": null,
+      "wins": 2,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1699123456792,
+      "name": "David Wilson",
+      "image": "/images/player-1762240358445-226854040.jpg",
+      "wins": 1,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:47.459Z"
+  },
+  {
+    "id": 1762241869532,
+    "matchId": 1762239626713,
+    "winner": {
+      "id": 1762180758446,
+      "name": "Ådne",
+      "image": "/images/player-1762180891538-544876540.png",
+      "wins": 3,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762182554981,
+      "name": "Allah",
+      "image": null,
+      "wins": 2,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:49.532Z"
+  },
+  {
+    "id": 1762241872277,
+    "matchId": 1762239623721,
+    "winner": {
+      "id": 1762182529266,
+      "name": "Ronny",
+      "image": null,
+      "wins": 1,
+      "losses": 0
+    },
+    "loser": {
+      "id": 1762180802277,
+      "name": "Arnt Olav",
+      "image": null,
+      "wins": 0,
+      "losses": 1
+    },
+    "timestamp": "2025-11-04T07:37:52.277Z"
+  }
+]

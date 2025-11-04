@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../PaintPCBA_HWBuildResources"
+		},
+		{
+			"path": "../DSQC2015_IPS_Application_Control/sch/output"
+		}
+	],
+	"settings": {
+		"workbench.colorTheme": "Darcula Pycharm with Dark GUI"
+	}
+}
