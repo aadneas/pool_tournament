@@ -1,47 +1,118 @@
-// Client-side only version for GitHub Pages
-// This replaces the server functionality with localStorage
-
+// Firebase-powered Tournament Manager
 class TournamentManager {
     constructor() {
         this.ADMIN_PASSWORD = 'admin123';
-        this.initializeStorage();
+        this.database = window.database;
+        this.initializeDatabase();
+        
+        // Set up real-time listeners
+        this.setupListeners();
     }
 
-    initializeStorage() {
-        if (!localStorage.getItem('participants')) {
-            localStorage.setItem('participants', JSON.stringify([]));
+    async initializeDatabase() {
+        // Check if data exists, if not create initial structure
+        try {
+            const snapshot = await this.database.ref('tournament').once('value');
+            if (!snapshot.exists()) {
+                await this.database.ref('tournament').set({
+                    participants: [],
+                    brackets: { rounds: [] },
+                    results: []
+                });
+                console.log('Tournament database initialized');
+            }
+        } catch (error) {
+            console.error('Error initializing database:', error);
         }
-        if (!localStorage.getItem('brackets')) {
-            localStorage.setItem('brackets', JSON.stringify({ rounds: [] }));
+    }
+
+    setupListeners() {
+        // Listen for real-time updates and trigger UI refresh
+        this.database.ref('tournament').on('value', (snapshot) => {
+            if (window.app && snapshot.exists()) {
+                const data = snapshot.val();
+                // Update app data and refresh UI
+                if (window.app.participants !== data.participants) {
+                    window.app.participants = data.participants || [];
+                    if (window.app.currentSection === 'participants') {
+                        window.app.renderParticipants();
+                    }
+                    if (window.app.currentSection === 'admin') {
+                        window.app.renderAdminParticipants();
+                    }
+                }
+                if (JSON.stringify(window.app.bracket) !== JSON.stringify(data.brackets)) {
+                    window.app.bracket = data.brackets || { rounds: [] };
+                    if (window.app.currentSection === 'brackets') {
+                        window.app.renderBracket();
+                    }
+                }
+                if (JSON.stringify(window.app.results) !== JSON.stringify(data.results)) {
+                    window.app.results = data.results || [];
+                    if (window.app.currentSection === 'results') {
+                        window.app.renderResults();
+                    }
+                }
+            }
+        });
+    }
+
+    // Database helper methods
+    async getParticipants() {
+        try {
+            const snapshot = await this.database.ref('tournament/participants').once('value');
+            return snapshot.val() || [];
+        } catch (error) {
+            console.error('Error getting participants:', error);
+            return [];
         }
-        if (!localStorage.getItem('results')) {
-            localStorage.setItem('results', JSON.stringify([]));
+    }
+
+    async setParticipants(participants) {
+        try {
+            await this.database.ref('tournament/participants').set(participants);
+        } catch (error) {
+            console.error('Error setting participants:', error);
+            throw error;
         }
     }
 
-    // Storage helpers
-    getParticipants() {
-        return JSON.parse(localStorage.getItem('participants') || '[]');
+    async getBrackets() {
+        try {
+            const snapshot = await this.database.ref('tournament/brackets').once('value');
+            return snapshot.val() || { rounds: [] };
+        } catch (error) {
+            console.error('Error getting brackets:', error);
+            return { rounds: [] };
+        }
     }
 
-    setParticipants(participants) {
-        localStorage.setItem('participants', JSON.stringify(participants));
+    async setBrackets(brackets) {
+        try {
+            await this.database.ref('tournament/brackets').set(brackets);
+        } catch (error) {
+            console.error('Error setting brackets:', error);
+            throw error;
+        }
     }
 
-    getBrackets() {
-        return JSON.parse(localStorage.getItem('brackets') || '{"rounds":[]}');
+    async getResults() {
+        try {
+            const snapshot = await this.database.ref('tournament/results').once('value');
+            return snapshot.val() || [];
+        } catch (error) {
+            console.error('Error getting results:', error);
+            return [];
+        }
     }
 
-    setBrackets(brackets) {
-        localStorage.setItem('brackets', JSON.stringify(brackets));
-    }
-
-    getResults() {
-        return JSON.parse(localStorage.getItem('results') || '[]');
-    }
-
-    setResults(results) {
-        localStorage.setItem('results', JSON.stringify(results));
+    async setResults(results) {
+        try {
+            await this.database.ref('tournament/results').set(results);
+        } catch (error) {
+            console.error('Error setting results:', error);
+            throw error;
+        }
     }
 
     // Admin authentication
@@ -55,7 +126,7 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        const participants = this.getParticipants();
+        const participants = await this.getParticipants();
         const newParticipant = {
             id: Date.now(),
             name: name,
@@ -65,28 +136,36 @@ class TournamentManager {
         };
 
         participants.push(newParticipant);
-        this.setParticipants(participants);
+        await this.setParticipants(participants);
         return newParticipant;
     }
 
     async uploadParticipantImage(participantId, file) {
-        return new Promise((resolve, reject) => {
-            const participants = this.getParticipants();
-            const participant = participants.find(p => p.id === participantId);
-            
-            if (!participant) {
-                reject(new Error('Participant not found'));
-                return;
-            }
+        return new Promise(async (resolve, reject) => {
+            try {
+                const participants = await this.getParticipants();
+                const participant = participants.find(p => p.id === participantId);
+                
+                if (!participant) {
+                    reject(new Error('Participant not found'));
+                    return;
+                }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                participant.image = e.target.result; // Store as base64
-                this.setParticipants(participants);
-                resolve(participant);
-            };
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsDataURL(file);
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        participant.image = e.target.result; // Store as base64
+                        await this.setParticipants(participants);
+                        resolve(participant);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -95,7 +174,7 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        const participants = this.getParticipants();
+        const participants = await this.getParticipants();
         
         if (participants.length < 2) {
             throw new Error('Need at least 2 participants');
@@ -173,7 +252,7 @@ class TournamentManager {
             }
         }
         
-        this.setBrackets(bracket);
+        await this.setBrackets(bracket);
         return bracket;
     }
 
@@ -182,9 +261,9 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        const bracket = this.getBrackets();
-        const participants = this.getParticipants();
-        const results = this.getResults();
+        const bracket = await this.getBrackets();
+        const participants = await this.getParticipants();
+        const results = await this.getResults();
         
         // Find and update the match
         let matchFound = false;
@@ -240,9 +319,9 @@ class TournamentManager {
             }
         }
         
-        this.setBrackets(bracket);
-        this.setParticipants(participants);
-        this.setResults(results);
+        await this.setBrackets(bracket);
+        await this.setParticipants(participants);
+        await this.setResults(results);
         
         return { success: true, bracket };
     }
@@ -252,9 +331,11 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        localStorage.setItem('participants', JSON.stringify([]));
-        localStorage.setItem('brackets', JSON.stringify({ rounds: [] }));
-        localStorage.setItem('results', JSON.stringify([]));
+        await this.database.ref('tournament').set({
+            participants: [],
+            brackets: { rounds: [] },
+            results: []
+        });
         
         return { success: true, message: 'All tournament data reset successfully' };
     }
@@ -264,15 +345,15 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        const participants = this.getParticipants();
+        const participants = await this.getParticipants();
         participants.forEach(p => {
             p.wins = 0;
             p.losses = 0;
         });
         
-        this.setParticipants(participants);
-        this.setBrackets({ rounds: [] });
-        this.setResults([]);
+        await this.setParticipants(participants);
+        await this.setBrackets({ rounds: [] });
+        await this.setResults([]);
         
         return { success: true, message: 'Tournament results reset successfully' };
     }
@@ -282,7 +363,7 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        const participants = this.getParticipants();
+        const participants = await this.getParticipants();
         const participantIndex = participants.findIndex(p => p.id === participantId);
         
         if (participantIndex === -1) {
@@ -291,7 +372,7 @@ class TournamentManager {
         
         const participant = participants[participantIndex];
         participants.splice(participantIndex, 1);
-        this.setParticipants(participants);
+        await this.setParticipants(participants);
         
         return { success: true, message: `Participant ${participant.name} removed successfully` };
     }
@@ -301,7 +382,7 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
-        const bracket = this.getBrackets();
+        const bracket = await this.getBrackets();
         let matchFound = false;
 
         for (let round of bracket.rounds) {
@@ -318,7 +399,7 @@ class TournamentManager {
             throw new Error('Match not found');
         }
 
-        this.setBrackets(bracket);
+        await this.setBrackets(bracket);
         return { success: true, message: 'Match scheduled successfully' };
     }
 }

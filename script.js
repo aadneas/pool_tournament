@@ -127,7 +127,7 @@ class PoolTournamentApp {
     
     async loadParticipants() {
         try {
-            this.participants = this.tournamentManager.getParticipants();
+            this.participants = await this.tournamentManager.getParticipants();
             this.renderParticipants();
         } catch (error) {
             console.error('Error loading participants:', error);
@@ -145,7 +145,7 @@ class PoolTournamentApp {
         
         try {
             const newParticipant = await this.tournamentManager.addParticipant(name, this.adminPassword);
-            this.participants = this.tournamentManager.getParticipants();
+            this.participants = await this.tournamentManager.getParticipants();
             this.renderParticipants();
             this.hideAddParticipantForm();
             document.getElementById('participant-name').value = '';
@@ -214,7 +214,7 @@ class PoolTournamentApp {
             const updatedParticipant = await this.tournamentManager.uploadParticipantImage(this.selectedParticipantId, file);
             
             // Update local data
-            this.participants = this.tournamentManager.getParticipants();
+            this.participants = await this.tournamentManager.getParticipants();
             
             this.renderParticipants();
             document.getElementById('image-modal').style.display = 'none';
@@ -247,7 +247,7 @@ class PoolTournamentApp {
     
     async loadBracket() {
         try {
-            this.bracket = this.tournamentManager.getBrackets();
+            this.bracket = await this.tournamentManager.getBrackets();
             this.renderBracket();
         } catch (error) {
             console.error('Error loading bracket:', error);
@@ -466,7 +466,7 @@ class PoolTournamentApp {
             this.bracket = result.bracket;
             
             // Refresh all data
-            this.participants = this.tournamentManager.getParticipants();
+            this.participants = await this.tournamentManager.getParticipants();
             this.renderBracket();
             this.loadResults();
         } catch (error) {
@@ -477,7 +477,7 @@ class PoolTournamentApp {
     
     async loadResults() {
         try {
-            this.results = this.tournamentManager.getResults();
+            this.results = await this.tournamentManager.getResults();
             this.renderResults();
         } catch (error) {
             console.error('Error loading results:', error);
@@ -602,7 +602,7 @@ class PoolTournamentApp {
         try {
             const result = await this.tournamentManager.removeParticipant(participantId, this.adminPassword);
             alert(result.message);
-            this.participants = this.tournamentManager.getParticipants();
+            this.participants = await this.tournamentManager.getParticipants();
             this.renderAdminParticipants();
         } catch (error) {
             console.error('Error removing participant:', error);
@@ -618,9 +618,9 @@ class PoolTournamentApp {
         try {
             const result = await this.tournamentManager.resetTournament(this.adminPassword);
             alert(result.message);
-            this.participants = this.tournamentManager.getParticipants();
-            this.bracket = this.tournamentManager.getBrackets();
-            this.results = this.tournamentManager.getResults();
+            this.participants = await this.tournamentManager.getParticipants();
+            this.bracket = await this.tournamentManager.getBrackets();
+            this.results = await this.tournamentManager.getResults();
             this.renderParticipants();
             this.renderBracket();
             this.renderResults();
@@ -639,9 +639,9 @@ class PoolTournamentApp {
         try {
             const result = await this.tournamentManager.resetAll(this.adminPassword);
             alert(result.message);
-            this.participants = this.tournamentManager.getParticipants();
-            this.bracket = this.tournamentManager.getBrackets();
-            this.results = this.tournamentManager.getResults();
+            this.participants = await this.tournamentManager.getParticipants();
+            this.bracket = await this.tournamentManager.getBrackets();
+            this.results = await this.tournamentManager.getResults();
             this.renderParticipants();
             this.renderBracket();
             this.renderResults();
@@ -854,7 +854,7 @@ class PoolTournamentApp {
             await this.tournamentManager.scheduleMatch(matchId, date, time, this.adminPassword);
             
             // Refresh bracket display
-            this.bracket = this.tournamentManager.getBrackets();
+            this.bracket = await this.tournamentManager.getBrackets();
             this.renderBracket();
             
             // Update the modal with the new schedule
