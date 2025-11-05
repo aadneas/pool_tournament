@@ -31,8 +31,9 @@ class TournamentManager {
         this.database.ref('tournament').on('value', (snapshot) => {
             if (window.app && snapshot.exists()) {
                 const data = snapshot.val();
-                // Update app data and refresh UI
-                if (window.app.participants !== data.participants) {
+                
+                // Update participants and refresh related views
+                if (JSON.stringify(window.app.participants) !== JSON.stringify(data.participants)) {
                     window.app.participants = data.participants || [];
                     if (window.app.currentSection === 'participants') {
                         window.app.renderParticipants();
@@ -40,13 +41,22 @@ class TournamentManager {
                     if (window.app.currentSection === 'admin') {
                         window.app.renderAdminParticipants();
                     }
+                    // Always refresh brackets when participants change (for image updates)
+                    if (window.app.currentSection === 'brackets') {
+                        window.app.updateBracketParticipantData();
+                        window.app.renderBracket();
+                    }
                 }
+                
+                // Update brackets
                 if (JSON.stringify(window.app.bracket) !== JSON.stringify(data.brackets)) {
                     window.app.bracket = data.brackets || { rounds: [] };
                     if (window.app.currentSection === 'brackets') {
                         window.app.renderBracket();
                     }
                 }
+                
+                // Update results
                 if (JSON.stringify(window.app.results) !== JSON.stringify(data.results)) {
                     window.app.results = data.results || [];
                     if (window.app.currentSection === 'results') {

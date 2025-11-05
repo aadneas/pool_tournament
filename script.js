@@ -216,7 +216,15 @@ class PoolTournamentApp {
             // Update local data
             this.participants = await this.tournamentManager.getParticipants();
             
+            // Refresh all views that show participant images
             this.renderParticipants();
+            if (this.currentSection === 'brackets') {
+                this.renderBracket();
+            }
+            if (this.currentSection === 'admin') {
+                this.renderAdminParticipants();
+            }
+            
             document.getElementById('image-modal').style.display = 'none';
             fileInput.value = '';
         } catch (error) {
@@ -267,6 +275,9 @@ class PoolTournamentApp {
             return;
         }
         
+        // Update bracket with latest participant data before rendering
+        this.updateBracketParticipantData();
+        
         // Create simple tree structure
         container.innerHTML = `
             <div class="bracket-tree">
@@ -283,6 +294,34 @@ class PoolTournamentApp {
         
         // Add vertical connectors after HTML is rendered
         this.addVerticalConnectors();
+    }
+
+    updateBracketParticipantData() {
+        // Update participant references in bracket with latest data
+        if (!this.bracket.rounds) return;
+        
+        for (let round of this.bracket.rounds) {
+            for (let match of round.matches) {
+                if (match.player1) {
+                    const updatedPlayer1 = this.participants.find(p => p.id === match.player1.id);
+                    if (updatedPlayer1) {
+                        match.player1 = updatedPlayer1;
+                    }
+                }
+                if (match.player2) {
+                    const updatedPlayer2 = this.participants.find(p => p.id === match.player2.id);
+                    if (updatedPlayer2) {
+                        match.player2 = updatedPlayer2;
+                    }
+                }
+                if (match.winner) {
+                    const updatedWinner = this.participants.find(p => p.id === match.winner.id);
+                    if (updatedWinner) {
+                        match.winner = updatedWinner;
+                    }
+                }
+            }
+        }
     }
     
     addVerticalConnectors() {
