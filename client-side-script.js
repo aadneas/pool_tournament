@@ -446,17 +446,13 @@ class TournamentManager {
                     match.completed = false;
                 }
 
-                // Set as bye and winner if only one player
-                if (match.player1 && !match.player2) {
-                    match.winner = match.player1;
-                    match.completed = true;
-                } else if (match.player2 && !match.player1) {
-                    match.winner = match.player2;
-                    match.completed = true;
-                } else if (!match.player1 && !match.player2) {
+                // Only auto-complete as bye if it was originally generated that way
+                // Manual unassignments should not auto-complete the match
+                if (!match.player1 && !match.player2) {
                     match.winner = null;
                     match.completed = false;
                 }
+                // Don't auto-complete single player matches - leave them editable
 
                 matchFound = true;
                 break;

@@ -387,9 +387,9 @@ class PoolTournamentApp {
     
     renderMatch(match, roundIndex, matchIndex) {
         const isCompleted = match.completed;
-        const isBye = !match.player2 && match.player1;
+        const isBye = !match.player2 && match.player1 && match.completed; // Only true bye if actually completed
         const isTBD = !match.player1 && !match.player2;
-        const hasOnePlayer = (match.player1 && !match.player2) || (!match.player1 && match.player2);
+        const hasOnePlayer = (match.player1 && !match.player2 && !match.completed) || (!match.player1 && match.player2 && !match.completed);
         
         if (isTBD) {
             return `
@@ -720,9 +720,9 @@ class PoolTournamentApp {
     renderMatchDetail(match) {
         const roundName = this.getRoundName(match.roundIndex, this.bracket.rounds.length);
         const isCompleted = match.completed;
-        const isBye = !match.player2 && match.player1;
+        const isBye = !match.player2 && match.player1 && match.completed; // Only true bye if actually completed
         const isTBD = !match.player1 && !match.player2;
-        const hasOnePlayer = (match.player1 && !match.player2) || (!match.player1 && match.player2);
+        const hasOnePlayer = (match.player1 && !match.player2 && !match.completed) || (!match.player1 && match.player2 && !match.completed);
         
         // Update round and title
         document.getElementById('match-detail-round').textContent = roundName;
@@ -810,10 +810,17 @@ class PoolTournamentApp {
                     <strong>🏆 Winner: ${match.winner?.name || 'Unknown'}</strong>
                 </div>
             `;
-        } else if (isTBD || hasOnePlayer) {
+        } else if (isTBD) {
             statusContainer.innerHTML = `
                 <div class="pending">
-                    <strong>⏳ Match not ready</strong>
+                    <strong>⏳ Match not ready - awaiting players from previous rounds</strong>
+                </div>
+            `;
+        } else if (hasOnePlayer) {
+            const assignedPlayer = match.player1 || match.player2;
+            statusContainer.innerHTML = `
+                <div class="pending">
+                    <strong>⚠️ ${assignedPlayer.name} assigned - waiting for opponent</strong>
                 </div>
             `;
         } else {
@@ -846,7 +853,10 @@ class PoolTournamentApp {
         // Render actions
         const actionsContainer = document.getElementById('match-detail-actions');
         
-        if (this.isAdminLoggedIn && !isCompleted) {
+        // Allow editing if admin and match isn't actually completed with a recorded result
+        const canEdit = this.isAdminLoggedIn && !isCompleted;
+        
+        if (canEdit) {
             let actionsHTML = '';
             
             // Player assignment section
