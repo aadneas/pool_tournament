@@ -433,7 +433,7 @@ class PoolTournamentApp {
             `;
         }
         
-        const canEdit = !isCompleted && this.isAdminLoggedIn;
+        const canEdit = !match.hasRecordedResult && this.isAdminLoggedIn;
         
         return `
             <div class="match-card ${isCompleted ? 'completed' : ''} ${canEdit ? 'editable' : ''}" onclick="app.openMatchDetail(${match.id})">
@@ -853,8 +853,8 @@ class PoolTournamentApp {
         // Render actions
         const actionsContainer = document.getElementById('match-detail-actions');
         
-        // Allow editing if admin and match isn't actually completed with a recorded result
-        const canEdit = this.isAdminLoggedIn && !isCompleted;
+        // Allow editing if admin and match doesn't have a recorded result
+        const canEdit = this.isAdminLoggedIn && !match.hasRecordedResult;
         
         if (canEdit) {
             let actionsHTML = '';

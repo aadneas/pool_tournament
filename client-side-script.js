@@ -208,7 +208,9 @@ class TournamentManager {
                     winner: null,
                     completed: false,
                     scheduledDate: null,
-                    scheduledTime: null
+                    scheduledTime: null,
+                    hasRecordedResult: false,
+                    isBye: false
                 });
             } else {
                 // Bye for odd number of participants
@@ -219,7 +221,9 @@ class TournamentManager {
                     winner: shuffled[i],
                     completed: true,
                     scheduledDate: null,
-                    scheduledTime: null
+                    scheduledTime: null,
+                    hasRecordedResult: false, // This is an auto-bye, not a recorded result
+                    isBye: true
                 });
             }
         }
@@ -241,7 +245,9 @@ class TournamentManager {
                         winner: null,
                         completed: false,
                         scheduledDate: null,
-                        scheduledTime: null
+                        scheduledTime: null,
+                        hasRecordedResult: false,
+                        isBye: false
                     });
                 } else if (winnersCount % 2 === 1) {
                     nextRoundMatches.push({
@@ -251,7 +257,9 @@ class TournamentManager {
                         winner: null,
                         completed: false,
                         scheduledDate: null,
-                        scheduledTime: null
+                        scheduledTime: null,
+                        hasRecordedResult: false,
+                        isBye: false
                     });
                 }
             }
@@ -283,6 +291,7 @@ class TournamentManager {
             if (match) {
                 match.winner = match.player1?.id === winnerId ? match.player1 : match.player2;
                 match.completed = true;
+                match.hasRecordedResult = true; // Mark as having a real recorded result
                 matchFound = true;
                 completedMatch = match;
                 
@@ -428,8 +437,8 @@ class TournamentManager {
         for (let round of bracket.rounds) {
             const match = round.matches.find(m => m.id === matchId);
             if (match) {
-                if (match.completed) {
-                    throw new Error('Cannot modify completed matches');
+                if (match.hasRecordedResult) {
+                    throw new Error('Cannot modify matches with recorded results');
                 }
 
                 if (playerSlot === 'player1') {
@@ -440,19 +449,12 @@ class TournamentManager {
                     throw new Error('Invalid player slot. Use "player1" or "player2"');
                 }
 
-                // Reset winner if match was a bye and now has two players
-                if (match.winner && match.player1 && match.player2) {
+                // Always reset completion status when manually editing players
+                // Only matches with recorded results should stay completed
+                if (!match.hasRecordedResult) {
                     match.winner = null;
                     match.completed = false;
                 }
-
-                // Only auto-complete as bye if it was originally generated that way
-                // Manual unassignments should not auto-complete the match
-                if (!match.player1 && !match.player2) {
-                    match.winner = null;
-                    match.completed = false;
-                }
-                // Don't auto-complete single player matches - leave them editable
 
                 matchFound = true;
                 break;
