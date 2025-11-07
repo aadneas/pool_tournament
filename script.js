@@ -433,8 +433,11 @@ class PoolTournamentApp {
             `;
         }
         
+        const canEdit = !isCompleted && this.isAdminLoggedIn;
+        
         return `
-            <div class="match-card ${isCompleted ? 'completed' : ''}" onclick="app.openMatchDetail(${match.id})">
+            <div class="match-card ${isCompleted ? 'completed' : ''} ${canEdit ? 'editable' : ''}" onclick="app.openMatchDetail(${match.id})">
+                ${canEdit ? '<div class="edit-indicator" style="position: absolute; top: 0.25rem; right: 0.25rem; font-size: 0.7rem; color: #666;">✏️</div>' : ''}
                 <div class="match-players">
                     <div class="player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
                         ${match.player1?.image ? 
@@ -842,31 +845,73 @@ class PoolTournamentApp {
         
         // Render actions
         const actionsContainer = document.getElementById('match-detail-actions');
-        if (!isCompleted && !isBye && match.player1 && match.player2 && this.isAdminLoggedIn) {
-            actionsContainer.innerHTML = `
-                <div class="match-scheduling" style="margin-bottom: 1rem;">
-                    <h4 style="margin-bottom: 0.5rem;">Schedule Match</h4>
-                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                        <input type="date" id="match-date-${match.id}" value="${match.scheduledDate || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
-                        <input type="time" id="match-time-${match.id}" value="${match.scheduledTime || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
-                        <button class="btn btn-primary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="app.scheduleMatchFromDetail(${match.id})">
-                            Set Schedule
-                        </button>
+        
+        if (this.isAdminLoggedIn && !isCompleted) {
+            let actionsHTML = '';
+            
+            // Player assignment section
+            actionsHTML += `
+                <div class="match-player-assignment" style="margin-bottom: 1rem;">
+                    <h4 style="margin-bottom: 0.5rem;">Edit Players</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">Player 1:</label>
+                            <select id="player1-select-${match.id}" style="width: 100%; padding: 0.25rem; font-size: 0.8rem;" onchange="app.assignPlayerFromDetail(${match.id}, 'player1', this.value)">
+                                <option value="">-- Unassign --</option>
+                                ${this.participants.map(p => `
+                                    <option value="${p.id}" ${match.player1?.id === p.id ? 'selected' : ''}>${p.name}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.85rem; margin-bottom: 0.25rem;">Player 2:</label>
+                            <select id="player2-select-${match.id}" style="width: 100%; padding: 0.25rem; font-size: 0.8rem;" onchange="app.assignPlayerFromDetail(${match.id}, 'player2', this.value)">
+                                <option value="">-- Unassign --</option>
+                                ${this.participants.map(p => `
+                                    <option value="${p.id}" ${match.player2?.id === p.id ? 'selected' : ''}>${p.name}</option>
+                                `).join('')}
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="match-result-buttons">
-                    <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player1.id})">
-                        ${match.player1.name} Wins
-                    </button>
-                    <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player2.id})">
-                        ${match.player2.name} Wins
-                    </button>
-                </div>
             `;
+            
+            // Scheduling section (only if both players assigned)
+            if (match.player1 && match.player2) {
+                actionsHTML += `
+                    <div class="match-scheduling" style="margin-bottom: 1rem;">
+                        <h4 style="margin-bottom: 0.5rem;">Schedule Match</h4>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <input type="date" id="match-date-${match.id}" value="${match.scheduledDate || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
+                            <input type="time" id="match-time-${match.id}" value="${match.scheduledTime || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
+                            <button class="btn btn-primary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="app.scheduleMatchFromDetail(${match.id})">
+                                Set Schedule
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Result recording section (only if both players assigned and not completed)
+            if (match.player1 && match.player2 && !isCompleted) {
+                actionsHTML += `
+                    <div class="match-result-buttons">
+                        <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player1.id})">
+                            ${match.player1.name} Wins
+                        </button>
+                        <button class="btn btn-success" onclick="app.recordMatchResultFromDetail(${match.id}, ${match.player2.id})">
+                            ${match.player2.name} Wins
+                        </button>
+                    </div>
+                `;
+            }
+            
+            actionsContainer.innerHTML = actionsHTML;
+            
         } else if (!this.isAdminLoggedIn && !isCompleted && match.player1 && match.player2) {
             actionsContainer.innerHTML = `
                 <div style="text-align: center; color: #666;">
-                    <p>🔒 Admin access required to record results</p>
+                    <p>🔒 Admin access required to manage match</p>
                 </div>
             `;
         } else {
@@ -906,6 +951,40 @@ class PoolTournamentApp {
         } catch (error) {
             console.error('Error scheduling match:', error);
             alert(error.message || 'Error scheduling match');
+        }
+    }
+
+    async assignPlayerFromDetail(matchId, playerSlot, participantId) {
+        if (!this.isAdminLoggedIn) {
+            alert('Admin access required');
+            return;
+        }
+
+        try {
+            const numericId = participantId ? parseInt(participantId) : null;
+            await this.tournamentManager.assignPlayerToMatch(matchId, playerSlot, numericId, this.adminPassword);
+            
+            // Refresh bracket display
+            this.bracket = await this.tournamentManager.getBrackets();
+            this.renderBracket();
+            
+            // Update the modal with the new assignments
+            const match = this.findMatchById(matchId);
+            if (match) {
+                this.renderMatchDetail(match);
+            }
+        } catch (error) {
+            console.error('Error assigning player:', error);
+            alert(error.message || 'Error assigning player');
+            
+            // Reset the dropdown to previous value on error
+            const match = this.findMatchById(matchId);
+            if (match) {
+                const select = document.getElementById(`${playerSlot}-select-${matchId}`);
+                if (select) {
+                    select.value = match[playerSlot]?.id || '';
+                }
+            }
         }
     }
 }

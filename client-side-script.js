@@ -412,6 +412,64 @@ class TournamentManager {
         await this.setBrackets(bracket);
         return { success: true, message: 'Match scheduled successfully' };
     }
+
+    async assignPlayerToMatch(matchId, playerSlot, participantId, password) {
+        if (!this.checkAdminPassword(password)) {
+            throw new Error('Invalid admin password');
+        }
+
+        const bracket = await this.getBrackets();
+        const participants = await this.getParticipants();
+        let matchFound = false;
+
+        // Find the participant to assign (null if unassigning)
+        const participant = participantId ? participants.find(p => p.id === participantId) : null;
+
+        for (let round of bracket.rounds) {
+            const match = round.matches.find(m => m.id === matchId);
+            if (match) {
+                if (match.completed) {
+                    throw new Error('Cannot modify completed matches');
+                }
+
+                if (playerSlot === 'player1') {
+                    match.player1 = participant;
+                } else if (playerSlot === 'player2') {
+                    match.player2 = participant;
+                } else {
+                    throw new Error('Invalid player slot. Use "player1" or "player2"');
+                }
+
+                // Reset winner if match was a bye and now has two players
+                if (match.winner && match.player1 && match.player2) {
+                    match.winner = null;
+                    match.completed = false;
+                }
+
+                // Set as bye and winner if only one player
+                if (match.player1 && !match.player2) {
+                    match.winner = match.player1;
+                    match.completed = true;
+                } else if (match.player2 && !match.player1) {
+                    match.winner = match.player2;
+                    match.completed = true;
+                } else if (!match.player1 && !match.player2) {
+                    match.winner = null;
+                    match.completed = false;
+                }
+
+                matchFound = true;
+                break;
+            }
+        }
+
+        if (!matchFound) {
+            throw new Error('Match not found');
+        }
+
+        await this.setBrackets(bracket);
+        return { success: true, message: 'Player assignment updated successfully' };
+    }
 }
 
 // Create global instance

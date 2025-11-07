@@ -438,6 +438,24 @@ main {
     background: linear-gradient(135deg, #ffffff 0%, #fff9e6 100%);
 }
 
+.match-card.editable {
+    position: relative;
+}
+
+.match-card.editable:hover {
+    border-color: #007bff;
+    box-shadow: 0 5px 20px rgba(0, 123, 255, 0.2);
+}
+
+.match-card .edit-indicator {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    font-size: 0.7rem;
+    color: #666;
+    pointer-events: none;
+}
+
 .match-status {
     text-align: center;
     font-size: 0.8rem;
