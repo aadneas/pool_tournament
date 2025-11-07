@@ -11,8 +11,8 @@
         <h1>🎱 Bryne Robotics Ultimate Pool Tournament 🎱</h1>
         <nav>
             <button class="nav-btn active" data-section="participants">Participants</button>
+            <button class="nav-btn" data-section="groups">Group Stage</button>
             <button class="nav-btn" data-section="brackets">Brackets</button>
-            <button class="nav-btn" data-section="results">Results</button>
             <button class="nav-btn admin-btn" data-section="admin">🔒 Admin</button>
         </nav>
     </header>
@@ -37,23 +37,27 @@
             <div id="participants-grid" class="participants-grid"></div>
         </section>
 
+        <!-- Group Stage Section -->
+        <section id="groups" class="section">
+            <div class="section-header">
+                <h2>Group Stage (Swiss Format)</h2>
+                <div class="group-controls">
+                    <button id="generate-groups-btn" class="btn btn-primary">🔒 Generate Groups (Admin)</button>
+                    <button id="next-round-btn" class="btn btn-success" style="display: none;">🔒 Generate Next Round (Admin)</button>
+                </div>
+            </div>
+            
+            <div id="groups-container"></div>
+        </section>
+
         <!-- Brackets Section -->
         <section id="brackets" class="section">
             <div class="section-header">
-                <h2>Tournament Bracket</h2>
-                <button id="generate-bracket-btn" class="btn btn-primary">🔒 Generate Bracket (Admin)</button>
+                <h2>Knockout Stage (Quarterfinals)</h2>
+                <button id="generate-bracket-btn" class="btn btn-primary">🔒 Generate Knockout (Admin)</button>
             </div>
             
             <div id="bracket-container"></div>
-        </section>
-
-        <!-- Results Section -->
-        <section id="results" class="section">
-            <div class="section-header">
-                <h2>Match Results</h2>
-            </div>
-            
-            <div id="results-container"></div>
         </section>
 
         <!-- Admin Section -->

@@ -4,6 +4,7 @@ class PoolTournamentApp {
         this.participants = [];
         this.bracket = { rounds: [] };
         this.results = [];
+        this.groups = { stage: 'not-started', groups: [], matches: [] };
         this.selectedParticipantId = null;
         this.isAdminLoggedIn = false;
         this.adminPassword = null;
@@ -15,6 +16,7 @@ class PoolTournamentApp {
     init() {
         this.bindEvents();
         this.loadParticipants();
+        this.loadGroups();
         this.loadBracket();
         this.loadResults();
     }
@@ -96,6 +98,15 @@ class PoolTournamentApp {
         document.getElementById('reset-all-btn').addEventListener('click', () => {
             this.resetAll();
         });
+
+        // Group stage events
+        document.getElementById('generate-groups-btn').addEventListener('click', () => {
+            this.generateGroups();
+        });
+
+        document.getElementById('next-round-btn').addEventListener('click', () => {
+            this.advanceToNextRound();
+        });
     }
     
     switchSection(section) {
@@ -116,6 +127,8 @@ class PoolTournamentApp {
         // Refresh data for the section
         if (section === 'participants') {
             this.loadParticipants();
+        } else if (section === 'groups') {
+            this.loadGroups();
         } else if (section === 'brackets') {
             this.loadBracket();
         } else if (section === 'results') {
@@ -364,23 +377,19 @@ class PoolTournamentApp {
     
     
     getRoundName(roundIndex, totalRounds) {
+        // Use the round name from the bracket if available
+        if (this.bracket.rounds && this.bracket.rounds[roundIndex] && this.bracket.rounds[roundIndex].name) {
+            return this.bracket.rounds[roundIndex].name;
+        }
+        
         const roundNumber = roundIndex + 1;
         const roundsFromEnd = totalRounds - roundIndex;
         
-        // For incomplete tournaments, estimate total rounds needed
-        let estimatedTotalRounds = totalRounds;
-        if (totalRounds === 1 && this.participants.length > 2) {
-            // Calculate how many rounds we need for current participants
-            estimatedTotalRounds = Math.ceil(Math.log2(this.participants.length));
-        }
-        
-        const estimatedRoundsFromEnd = estimatedTotalRounds - roundIndex;
-        
-        if (estimatedRoundsFromEnd === 1) return 'Final';
-        if (estimatedRoundsFromEnd === 2) return 'Semifinal';
-        if (estimatedRoundsFromEnd === 3) return 'Quarterfinal';
-        if (estimatedRoundsFromEnd === 4) return 'Round of 16';
-        if (estimatedRoundsFromEnd === 5) return 'Round of 32';
+        if (roundsFromEnd === 1) return 'Final';
+        if (roundsFromEnd === 2) return 'Semifinal';  
+        if (roundsFromEnd === 3) return 'Quarterfinal';
+        if (roundsFromEnd === 4) return 'Round of 16';
+        if (roundsFromEnd === 5) return 'Round of 32';
         
         return `Round ${roundNumber}`;
     }
@@ -525,6 +534,859 @@ class PoolTournamentApp {
             console.error('Error loading results:', error);
         }
     }
+
+    async loadGroups() {
+        try {
+            this.groups = await this.tournamentManager.getGroups();
+            this.renderGroups();
+        } catch (error) {
+            console.error('Error loading groups:', error);
+        }
+    }
+
+    async generateGroups() {
+        if (this.participants.length < 8) {
+            alert('Need at least 8 participants for group stage!');
+            return;
+        }
+        
+        if (!this.isAdminLoggedIn) {
+            alert('Admin access required to generate groups');
+            return;
+        }
+        
+        try {
+            this.groups = await this.tournamentManager.generateGroups(this.adminPassword);
+            this.renderGroups();
+            alert('Groups generated successfully!');
+        } catch (error) {
+            console.error('Error generating groups:', error);
+            alert(error.message || 'Error generating groups');
+        }
+    }
+
+    async advanceToNextRound() {
+        if (!this.isAdminLoggedIn) {
+            alert('Admin access required to advance rounds');
+            return;
+        }
+        
+        try {
+            const result = await this.tournamentManager.advanceToNextRound(this.adminPassword);
+            this.groups = result.groupsData;
+            this.renderGroups();
+            alert(result.message);
+        } catch (error) {
+            console.error('Error advancing round:', error);
+            alert(error.message || 'Error advancing to next round');
+        }
+    }
+
+    renderGroups() {
+        const container = document.getElementById('groups-container');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        
+        if (this.groups.stage === 'not-started') {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Group Stage Not Started</h3>
+                    <p>Generate groups to begin the Swiss format group stage!</p>
+                </div>
+            `;
+            nextRoundBtn.style.display = 'none';
+            return;
+        }
+
+        // Show/hide next round button
+        if (this.groups.stage === 'in-progress' && this.isAdminLoggedIn) {
+            nextRoundBtn.style.display = 'inline-block';
+            const currentRoundMatches = this.groups.matches.filter(m => m.round === this.groups.currentRound);
+            const completedMatches = currentRoundMatches.filter(m => m.completed);
+            nextRoundBtn.textContent = completedMatches.length === currentRoundMatches.length ? 
+                (this.groups.currentRound >= this.groups.totalRounds ? 'Complete Group Stage' : 'Generate Next Round (Admin)') :
+                `Next Round (${completedMatches.length}/${currentRoundMatches.length} complete)`;
+        } else {
+            nextRoundBtn.style.display = 'none';
+        }
+
+        const standings = this.tournamentManager.getGroupStandings(this.groups);
+        
+        container.innerHTML = `
+            <div class="groups-header">
+                <h3>Round ${this.groups.currentRound} of ${this.groups.totalRounds} ${this.groups.stage === 'completed' ? '(COMPLETED)' : ''}</h3>
+            </div>
+            <div class="groups-grid">
+                ${standings.map(group => this.renderGroupWithMatches(group)).join('')}
+            </div>
+        `;
+        
+        // Add event listeners for clickable player names
+        setTimeout(() => {
+            const clickableNames = document.querySelectorAll('.clickable-player');
+            clickableNames.forEach(element => {
+                element.addEventListener('click', async (event) => {
+                    event.preventDefault();
+                    const playerId = element.getAttribute('data-player-id');
+                    const groupId = element.getAttribute('data-group-id');
+                    await this.showPlayerDetails(playerId, groupId);
+                });
+            });
+            
+            // Equalize group card heights after DOM is fully rendered
+            this.equalizeGroupHeights();
+        }, 50);
+    }
+
+    renderGroup(group) {
+        // Check for ties in qualification positions
+        const tieBreakerInfo = this.getTieBreakerInfo(group);
+        
+        return `
+            <div class="group-card">
+                <h3>${group.name}</h3>
+                <div class="group-standings">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Player</th>
+                                <th>W-L</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.standings.map(player => `
+                                <tr class="${player.position <= 2 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                    <td>${player.position}</td>
+                                    <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
+                                        ${player.image ? 
+                                            `<img src="${player.image}" alt="${player.name}" class="mini-player-image">` :
+                                            `<div class="mini-player-placeholder">👤</div>`
+                                        }
+                                        ${this.truncateName(player.name, 10)}
+                                    </td>
+                                    <td>${player.groupWins}-${player.groupLosses}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    ${group.standings.length > 2 ? `
+                        <div class="qualification-note">
+                            <small>🏆 Top 2 qualify for knockouts</small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    renderGroupWithMatches(group) {
+        // Check for ties in qualification positions
+        const tieBreakerInfo = this.getTieBreakerInfo(group);
+        
+        // Get all rounds from current down to 1 (reversed order)
+        const allRounds = [];
+        for (let round = this.groups.currentRound; round >= 1; round--) {
+            allRounds.push(round);
+        }
+        
+        return `
+            <div class="group-card-with-matches">
+                <div class="group-standings-section">
+                    <h3>${group.name}</h3>
+                    <div class="group-standings">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pos</th>
+                                    <th>Player</th>
+                                    <th>W-L</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${group.standings.map(player => `
+                                    <tr class="${player.position <= 2 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                        <td>${player.position}</td>
+                                        <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
+                                            ${player.image ? 
+                                                `<img src="${player.image}" alt="${player.name}" class="large-player-image">` :
+                                                `<div class="large-player-placeholder">👤</div>`
+                                            }
+                                            ${this.truncateName(player.name, 10)}
+                                        </td>
+                                        <td>${player.groupWins}-${player.groupLosses}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${group.standings.length > 2 ? `
+                            <div class="qualification-note">
+                                <small>🏆 Top 2 qualify for knockouts</small>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <div class="group-matches-section">
+                    ${allRounds.map(round => `
+                        <div class="round-matches">
+                            <h4>${round === this.groups.currentRound ? 'Current Round' : `Round ${round}`}</h4>
+                            <div class="matches-column">
+                                ${this.renderGroupMatchesForGroup(group.id, round)}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    renderGroupMatchesForGroup(groupId, round) {
+        const roundMatches = this.groups.matches.filter(m => 
+            m.round === round && 
+            (m.groupId === groupId || m.groupId === parseInt(groupId) || m.groupId?.toString() === groupId)
+        );
+        
+        if (roundMatches.length === 0) {
+            return '<p class="no-matches">No matches</p>';
+        }
+
+        return roundMatches.map(match => `
+            <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
+                <div class="match-header">
+                    <span class="round-indicator">R${match.round}</span>
+                    ${this.renderMatchDateTime(match)}
+                </div>
+                <div class="match-players">
+                    ${match.isBye ? `
+                        <div class="bye-display">
+                            <div class="player">
+                                ${match.player1?.image ? 
+                                    `<img src="${match.player1.image}" alt="${match.player1.name}" class="large-match-player-image">` :
+                                    `<div class="large-match-player-placeholder">👤</div>`
+                                }
+                                <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
+                            </div>
+                            <div class="bye-text">BYE</div>
+                        </div>
+                    ` : `
+                        <div class="player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
+                            ${match.player1?.image ? 
+                                `<img src="${match.player1.image}" alt="${match.player1.name}" class="large-match-player-image">` :
+                                `<div class="large-match-player-placeholder">👤</div>`
+                            }
+                            <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="player ${match.winner?.id === match.player2?.id ? 'winner' : ''}">
+                            ${match.player2?.image ? 
+                                `<img src="${match.player2.image}" alt="${match.player2.name}" class="large-match-player-image">` :
+                                `<div class="large-match-player-placeholder">👤</div>`
+                            }
+                            <span>${this.truncateName(match.player2?.name || 'TBD', 12)}</span>
+                        </div>
+                    `}
+                </div>
+                ${match.completed && !match.isBye ? `
+                    <div class="match-result">
+                        Winner: ${match.winner?.name || 'Unknown'}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    getTieBreakerInfo(group) {
+        const standings = group.standings;
+        const tiedPlayers = [];
+        let hasTies = false;
+        let explanation = "";
+
+        // Check for ties in top positions (positions 1-3, as ties around position 2 affect qualification)
+        for (let i = 0; i < Math.min(standings.length, 3); i++) {
+            const currentPlayer = standings[i];
+            
+            // Check if tied with next player
+            if (i < standings.length - 1) {
+                const nextPlayer = standings[i + 1];
+                if (currentPlayer.groupWins === nextPlayer.groupWins && 
+                    currentPlayer.groupLosses === nextPlayer.groupLosses) {
+                    
+                    if (!tiedPlayers.includes(currentPlayer.id)) {
+                        tiedPlayers.push(currentPlayer.id);
+                    }
+                    tiedPlayers.push(nextPlayer.id);
+                    hasTies = true;
+                }
+            }
+        }
+
+        if (hasTies) {
+            explanation = "Head-to-head record, then win % vs common opponents, then alphabetical";
+        }
+
+        return { hasTies, tiedPlayers, explanation };
+    }
+
+
+
+    showDetailedTieBreaker(groupId) {
+        const group = this.groups.groups.find(g => g.id === groupId);
+        if (!group) return;
+
+        // Find all tied players
+        const tiedGroups = {};
+        group.standings.forEach((player, index) => {
+            const key = `${player.groupWins}-${player.groupLosses}`;
+            if (!tiedGroups[key]) tiedGroups[key] = [];
+            tiedGroups[key].push({ ...player, originalPosition: index + 1 });
+        });
+
+        // Filter to only tied groups with more than 1 player
+        const actualTies = Object.entries(tiedGroups).filter(([key, players]) => players.length > 1);
+
+        if (actualTies.length === 0) {
+            alert('No ties found in this group.');
+            return;
+        }
+
+        let detailsHtml = `
+            <div class="tie-breaker-details-modal" style="
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: white; padding: 2rem; border-radius: 10px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 2000;
+                max-width: 600px; max-height: 80vh; overflow-y: auto;
+            ">
+                <h3 style="margin-top: 0; color: #1e3c72;">${group.name} - Tie-Breaker Details</h3>
+        `;
+
+        actualTies.forEach(([record, players]) => {
+            detailsHtml += `
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                    <h4 style="margin: 0 0 1rem 0; color: #495057;">Tied at ${record} (W-L)</h4>
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Players:</strong> ${players.map(p => `${p.name} (Pos ${p.originalPosition})`).join(', ')}
+                    </div>
+            `;
+
+            // Show head-to-head matrix for tied players
+            if (players.length === 2) {
+                const p1 = players[0], p2 = players[1];
+                const h2h = this.tournamentManager.getHeadToHeadRecord(p1.id, p2.id, groupId, this.groups.matches);
+                detailsHtml += `
+                    <div><strong>Head-to-Head:</strong> ${p1.name} vs ${p2.name} = ${h2h.record}</div>
+                    ${h2h.winner ? `<div style="color: #28a745;">Winner by H2H: ${h2h.winner === p1.id ? p1.name : p2.name}</div>` : '<div style="color: #ffc107;">No H2H advantage</div>'}
+                `;
+            } else {
+                // Multiple players tied - show matrix
+                detailsHtml += `<div><strong>Head-to-Head Matrix:</strong></div>`;
+                detailsHtml += `<table style="width: 100%; margin: 0.5rem 0; border-collapse: collapse;">`;
+                detailsHtml += `<tr><th style="border: 1px solid #ddd; padding: 0.25rem;">vs</th>`;
+                players.forEach(p => {
+                    detailsHtml += `<th style="border: 1px solid #ddd; padding: 0.25rem; font-size: 0.8rem;">${this.truncateName(p.name, 6)}</th>`;
+                });
+                detailsHtml += `</tr>`;
+
+                players.forEach(p1 => {
+                    detailsHtml += `<tr><td style="border: 1px solid #ddd; padding: 0.25rem; font-weight: bold; font-size: 0.8rem;">${this.truncateName(p1.name, 6)}</td>`;
+                    players.forEach(p2 => {
+                        if (p1.id === p2.id) {
+                            detailsHtml += `<td style="border: 1px solid #ddd; padding: 0.25rem; background: #f0f0f0;">-</td>`;
+                        } else {
+                            const h2h = this.tournamentManager.getHeadToHeadRecord(p1.id, p2.id, groupId, this.groups.matches);
+                            const color = h2h.winner === p1.id ? '#d4edda' : h2h.winner === p2.id ? '#f8d7da' : '#fff3cd';
+                            detailsHtml += `<td style="border: 1px solid #ddd; padding: 0.25rem; background: ${color}; font-size: 0.8rem;">${h2h.record}</td>`;
+                        }
+                    });
+                    detailsHtml += `</tr>`;
+                });
+                detailsHtml += `</table>`;
+            }
+
+            detailsHtml += `</div>`;
+        });
+
+        detailsHtml += `
+                <div style="text-align: right; margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="this.parentElement.parentElement.remove(); document.getElementById('tie-breaker-overlay').remove();">
+                        Close
+                    </button>
+                </div>
+            </div>
+            <div id="tie-breaker-overlay" style="
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                background: rgba(0,0,0,0.5); z-index: 1999;
+            " onclick="this.remove(); document.querySelector('.tie-breaker-details-modal').remove();"></div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', detailsHtml);
+    }
+
+    async showPlayerDetails(playerId, groupId) {
+        // Get fresh groups data to ensure we have the latest matches
+        try {
+            this.groups = await this.tournamentManager.getGroups();
+        } catch (error) {
+            console.error('Error getting fresh groups data:', error);
+        }
+        
+        if (!this.groups || !this.groups.groups) {
+            alert('Groups data not available. Please try again.');
+            return;
+        }
+
+        // Get the processed standings to find the player with standings info
+        const standings = this.tournamentManager.getGroupStandings(this.groups);
+        
+        // Find the group in the processed standings (which has the standings data)
+        const group = standings.find(g => g.id === groupId || g.id === parseInt(groupId) || g.id.toString() === groupId);
+        if (!group) {
+            alert(`Group not found. Looking for: ${groupId}`);
+            return;
+        }
+
+        // Find the player in the standings
+        const player = group.standings.find(p => p.id === playerId || p.id === parseInt(playerId) || p.id.toString() === playerId);
+        if (!player) {
+            alert(`Player not found. Looking for: ${playerId}`);
+            return;
+        }
+
+        // Get all matches for this player in this group
+        const playerMatches = this.groups.matches.filter(match => {
+            const groupMatch = (match.groupId === groupId || match.groupId === parseInt(groupId) || match.groupId?.toString() === groupId);
+            const player1Match = (match.player1?.id === playerId || match.player1?.id === parseInt(playerId) || match.player1?.id?.toString() === playerId);
+            const player2Match = (match.player2?.id === playerId || match.player2?.id === parseInt(playerId) || match.player2?.id?.toString() === playerId);
+            return groupMatch && (player1Match || player2Match);
+        }).sort((a, b) => a.round - b.round);
+
+        // Get tied players
+        const tiedPlayers = group.standings.filter(p => 
+            p.groupWins === player.groupWins && 
+            p.groupLosses === player.groupLosses &&
+            p.id !== player.id
+        );
+
+        let detailsHtml = `
+            <div class="player-details-modal" style="
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: white; padding: 2rem; border-radius: 10px; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 2000;
+                max-width: 700px; max-height: 85vh; overflow-y: auto;
+            ">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    ${player.image ? 
+                        `<img src="${player.image}" alt="${player.name}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">` :
+                        `<div style="width: 60px; height: 60px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">👤</div>`
+                    }
+                    <div>
+                        <h3 style="margin: 0; color: #1e3c72;">${player.name}</h3>
+                        <p style="margin: 0.25rem 0 0 0; color: #666;">
+                            ${group.name} - Position ${player.position}
+                        </p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #495057;">Group Stage Stats</h4>
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                            <div><strong>Record:</strong> ${player.groupWins}-${player.groupLosses}</div>
+                            <div><strong>Win Rate:</strong> ${player.groupWins + player.groupLosses > 0 ? Math.round((player.groupWins / (player.groupWins + player.groupLosses)) * 100) : 0}%</div>
+                            <div><strong>Status:</strong> ${player.position <= 2 ? '🏆 Qualified' : 'Eliminated'}</div>
+                        </div>
+                    </div>
+                </div>
+        `;
+
+        // Show tie-breaker information if tied with other players
+        if (tiedPlayers.length > 0) {
+            detailsHtml += `
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0 0 0.5rem 0; color: #495057;">Tie-Breaker Status</h4>
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 1rem; border-radius: 6px;">
+                        <div style="margin-bottom: 0.5rem;"><strong>Tied with:</strong> ${tiedPlayers.map(p => p.name).join(', ')} (${player.groupWins}-${player.groupLosses})</div>
+            `;
+
+            tiedPlayers.forEach(tiedPlayer => {
+                const h2h = this.tournamentManager.getHeadToHeadRecord(playerId, tiedPlayer.id, groupId, this.groups.matches);
+                if (h2h.record !== "0-0") {
+                    const status = h2h.winner === playerId ? '✅ Ahead' : h2h.winner === tiedPlayer.id ? '❌ Behind' : '🟡 Even';
+                    detailsHtml += `<div><strong>vs ${tiedPlayer.name}:</strong> ${h2h.record} ${status}</div>`;
+                } else {
+                    detailsHtml += `<div><strong>vs ${tiedPlayer.name}:</strong> No games played</div>`;
+                }
+            });
+
+            detailsHtml += `</div></div>`;
+        }
+
+        // Show match history
+        detailsHtml += `
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #495057;">Group Stage Match History</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+        `;
+
+        if (playerMatches.length === 0) {
+            detailsHtml += `<p style="color: #666; font-style: italic;">No matches yet</p>`;
+        } else {
+            playerMatches.forEach(match => {
+                // Determine opponent with proper ID comparison
+                let opponent = null;
+                const player1Match = (match.player1?.id === playerId || match.player1?.id === parseInt(playerId) || match.player1?.id?.toString() === playerId);
+                const player2Match = (match.player2?.id === playerId || match.player2?.id === parseInt(playerId) || match.player2?.id?.toString() === playerId);
+                
+                if (player1Match) {
+                    opponent = match.player2;
+                } else if (player2Match) {
+                    opponent = match.player1;
+                }
+                
+                // Determine if player won with proper ID comparison
+                let isWinner = false;
+                if (match.winner) {
+                    isWinner = (match.winner.id === playerId || match.winner.id === parseInt(playerId) || match.winner.id?.toString() === playerId);
+                }
+                
+                const isBye = match.isBye || !opponent;
+                
+                let matchStatus, statusColor, statusIcon;
+                if (isBye) {
+                    matchStatus = "BYE (Auto Win)";
+                    statusColor = "#ffc107";
+                    statusIcon = "🎁";
+                } else if (!match.completed) {
+                    matchStatus = match.scheduledDate || match.scheduledTime ? "Scheduled" : "Not Played";
+                    statusColor = "#6c757d";
+                    statusIcon = "⏳";
+                } else if (isWinner) {
+                    matchStatus = "Won";
+                    statusColor = "#28a745";
+                    statusIcon = "🏆";
+                } else {
+                    matchStatus = "Lost";
+                    statusColor = "#dc3545";
+                    statusIcon = "❌";
+                }
+
+                let scheduleInfo = "";
+                if (match.scheduledDate || match.scheduledTime) {
+                    let dateTimeText = "";
+                    if (match.scheduledDate) {
+                        const date = new Date(match.scheduledDate);
+                        dateTimeText = date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+                    }
+                    if (match.scheduledTime) {
+                        if (dateTimeText) dateTimeText += ' ';
+                        dateTimeText += match.scheduledTime;
+                    }
+                    scheduleInfo = `<div style="font-size: 0.8rem; color: #666;">📅 ${dateTimeText}</div>`;
+                }
+
+                detailsHtml += `
+                    <div style="
+                        display: flex; justify-content: space-between; align-items: center; 
+                        padding: 0.75rem; margin-bottom: 0.5rem; 
+                        background: ${match.completed ? '#f8f9fa' : '#ffffff'}; 
+                        border: 1px solid #dee2e6; border-radius: 6px;
+                        border-left: 4px solid ${statusColor};
+                    ">
+                        <div>
+                            <div style="font-weight: 600;">
+                                Round ${match.round}: vs ${isBye ? "BYE" : (opponent?.name || "TBD")}
+                            </div>
+                            ${scheduleInfo}
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: ${statusColor}; font-weight: 600;">
+                                ${statusIcon} ${matchStatus}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        detailsHtml += `
+                </div>
+            </div>
+            
+            <div style="text-align: right; margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 1rem;">
+                <button class="btn btn-secondary" onclick="this.parentElement.parentElement.remove(); document.getElementById('player-details-overlay').remove();">
+                    Close
+                </button>
+            </div>
+        </div>
+        <div id="player-details-overlay" style="
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.5); z-index: 1999;
+        " onclick="this.remove(); document.querySelector('.player-details-modal').remove();"></div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', detailsHtml);
+    }
+
+    renderGroupMatches(round) {
+        const roundMatches = this.groups.matches.filter(m => m.round === round);
+        
+        if (roundMatches.length === 0) {
+            return '<p>No matches in this round</p>';
+        }
+
+        return roundMatches.map(match => `
+            <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
+                <div class="match-header">
+                    <span class="group-name">${match.groupName}</span>
+                    ${this.renderMatchDateTime(match)}
+                </div>
+                <div class="match-players">
+                    ${match.isBye ? `
+                        <div class="bye-display">
+                            <div class="player winner">
+                                ${match.player1?.image ? 
+                                    `<img src="${match.player1.image}" alt="${match.player1.name}" class="mini-player-image">` :
+                                    `<div class="mini-player-placeholder">👤</div>`
+                                }
+                                <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
+                            </div>
+                            <div class="bye-text">BYE</div>
+                        </div>
+                    ` : `
+                        <div class="player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
+                            ${match.player1?.image ? 
+                                `<img src="${match.player1.image}" alt="${match.player1.name}" class="mini-player-image">` :
+                                `<div class="mini-player-placeholder">👤</div>`
+                            }
+                            <span>${this.truncateName(match.player1?.name || 'TBD', 8)}</span>
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="player ${match.winner?.id === match.player2?.id ? 'winner' : ''}">
+                            ${match.player2?.image ? 
+                                `<img src="${match.player2.image}" alt="${match.player2.name}" class="mini-player-image">` :
+                                `<div class="mini-player-placeholder">👤</div>`
+                            }
+                            <span>${this.truncateName(match.player2?.name || 'TBD', 8)}</span>
+                        </div>
+                    `}
+                </div>
+                ${match.completed ? `
+                    <div class="match-result">
+                        🏆 ${this.truncateName(match.winner?.name || 'Unknown', 10)}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    openGroupMatchDetail(matchId) {
+        const match = this.groups.matches.find(m => m.id === matchId);
+        if (!match) {
+            alert('Match not found');
+            return;
+        }
+        
+        this.renderGroupMatchDetail(match);
+        document.getElementById('match-detail-modal').style.display = 'block';
+    }
+
+    renderGroupMatchDetail(match) {
+        document.getElementById('match-detail-round').textContent = `${match.groupName} - Round ${match.round}`;
+        document.getElementById('match-detail-title').textContent = 'Group Stage Match';
+        
+        // Render players
+        const playersContainer = document.getElementById('match-detail-players');
+        
+        if (match.isBye) {
+            playersContainer.innerHTML = `
+                <div class="match-detail-player winner">
+                    ${match.player1?.image ? 
+                        `<img src="${match.player1.image}" alt="${match.player1.name}" class="match-detail-player-image">` :
+                        `<div class="match-detail-player-placeholder">👤</div>`
+                    }
+                    <div class="match-detail-player-name">${match.player1?.name}</div>
+                    <div class="match-detail-player-stats">Group Record: ${match.player1?.groupWins || 0}-${match.player1?.groupLosses || 0}</div>
+                </div>
+                <div class="match-detail-vs" style="color: #ffc107; font-weight: bold;">BYE</div>
+                <div class="match-detail-bye-explanation" style="text-align: center; color: #666; font-style: italic;">
+                    Automatic win due to bye
+                </div>
+            `;
+        } else {
+            playersContainer.innerHTML = `
+                <div class="match-detail-player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
+                    ${match.player1?.image ? 
+                        `<img src="${match.player1.image}" alt="${match.player1.name}" class="match-detail-player-image">` :
+                        `<div class="match-detail-player-placeholder">👤</div>`
+                    }
+                    <div class="match-detail-player-name">${match.player1?.name}</div>
+                    <div class="match-detail-player-stats">Group Record: ${match.player1?.groupWins || 0}-${match.player1?.groupLosses || 0}</div>
+                </div>
+                <div class="match-detail-vs">VS</div>
+                <div class="match-detail-player ${match.winner?.id === match.player2?.id ? 'winner' : ''}">
+                    ${match.player2?.image ? 
+                        `<img src="${match.player2.image}" alt="${match.player2.name}" class="match-detail-player-image">` :
+                        `<div class="match-detail-player-placeholder">👤</div>`
+                    }
+                    <div class="match-detail-player-name">${match.player2?.name}</div>
+                    <div class="match-detail-player-stats">Group Record: ${match.player2?.groupWins || 0}-${match.player2?.groupLosses || 0}</div>
+                </div>
+            `;
+        }
+        
+        // Render status
+        const statusContainer = document.getElementById('match-detail-status');
+        if (match.completed) {
+            statusContainer.innerHTML = `
+                <div class="completed">
+                    <strong>🏆 Winner: ${match.winner?.name || 'Unknown'}</strong>
+                </div>
+            `;
+        } else {
+            let scheduleInfo = '';
+            if (match.scheduledDate || match.scheduledTime) {
+                let dateTimeText = '';
+                if (match.scheduledDate) {
+                    const date = new Date(match.scheduledDate);
+                    dateTimeText = date.toLocaleDateString('en-US', { 
+                        weekday: 'short',
+                        month: 'short', 
+                        day: 'numeric' 
+                    });
+                }
+                if (match.scheduledTime) {
+                    if (dateTimeText) dateTimeText += ' at ';
+                    dateTimeText += match.scheduledTime;
+                }
+                scheduleInfo = `<div style="margin-top: 0.5rem; color: #666;">📅 Scheduled: ${dateTimeText}</div>`;
+            }
+            
+            statusContainer.innerHTML = `
+                <div class="pending">
+                    <strong>🔄 Group match ready to play</strong>
+                    ${scheduleInfo}
+                </div>
+            `;
+        }
+        
+        // Render actions
+        const actionsContainer = document.getElementById('match-detail-actions');
+        if (match.isBye) {
+            actionsContainer.innerHTML = `
+                <div style="text-align: center; color: #666;">
+                    <p>This is a bye match - no action required</p>
+                </div>
+            `;
+        } else if (this.isAdminLoggedIn && !match.hasRecordedResult) {
+            actionsContainer.innerHTML = `
+                <div class="match-scheduling" style="margin-bottom: 1rem;">
+                    <h4 style="margin-bottom: 0.5rem;">Schedule Match</h4>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <input type="date" id="group-match-date-${match.id}" value="${match.scheduledDate || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
+                        <input type="time" id="group-match-time-${match.id}" value="${match.scheduledTime || ''}" style="padding: 0.25rem; font-size: 0.8rem;">
+                        <button class="btn btn-primary" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;" onclick="app.scheduleGroupMatchFromDetail(${match.id})">
+                            Set Schedule
+                        </button>
+                    </div>
+                </div>
+                <div class="match-result-buttons">
+                    <button class="btn btn-success" onclick="app.recordGroupMatchResultFromDetail(${match.id}, ${match.player1.id})">
+                        ${match.player1.name} Wins
+                    </button>
+                    <button class="btn btn-success" onclick="app.recordGroupMatchResultFromDetail(${match.id}, ${match.player2.id})">
+                        ${match.player2.name} Wins
+                    </button>
+                </div>
+            `;
+        } else if (this.isAdminLoggedIn && match.hasRecordedResult) {
+            actionsContainer.innerHTML = `
+                <div style="text-align: center;">
+                    <button class="btn btn-warning" onclick="app.reverseGroupMatchResultFromDetail(${match.id})">
+                        🔄 Reverse Result
+                    </button>
+                    <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+                        This will undo the recorded result and allow the match to be played again.
+                    </p>
+                </div>
+            `;
+        } else if (!this.isAdminLoggedIn && !match.completed) {
+            actionsContainer.innerHTML = `
+                <div style="text-align: center; color: #666;">
+                    <p>🔒 Admin access required to manage match</p>
+                </div>
+            `;
+        } else {
+            actionsContainer.innerHTML = '';
+        }
+    }
+
+    async recordGroupMatchResultFromDetail(matchId, winnerId) {
+        try {
+            const result = await this.tournamentManager.recordGroupMatchResult(matchId, winnerId, this.adminPassword);
+            this.groups = result.groupsData;
+            this.participants = await this.tournamentManager.getParticipants();
+            this.renderGroups();
+            document.getElementById('match-detail-modal').style.display = 'none';
+        } catch (error) {
+            console.error('Error recording group match result:', error);
+            alert(error.message || 'Error recording match result');
+        }
+    }
+
+    async reverseGroupMatchResultFromDetail(matchId) {
+        const match = this.groups.matches.find(m => m.id === matchId);
+        const winnerName = match.winner?.name || 'Unknown';
+        
+        if (!confirm(`Are you sure you want to reverse the result of this match?\n\nThis will undo ${winnerName}'s win and reset the match to unplayed status.`)) {
+            return;
+        }
+
+        try {
+            const result = await this.tournamentManager.reverseGroupMatchResult(matchId, this.adminPassword);
+            this.groups = result.groupsData;
+            this.participants = await this.tournamentManager.getParticipants();
+            this.renderGroups();
+            
+            // Update the modal to show the new match state
+            const updatedMatch = this.groups.matches.find(m => m.id === matchId);
+            this.renderGroupMatchDetail(updatedMatch);
+            
+        } catch (error) {
+            console.error('Error reversing group match result:', error);
+            alert(error.message || 'Error reversing match result');
+        }
+    }
+
+    async scheduleGroupMatchFromDetail(matchId) {
+        const date = document.getElementById(`group-match-date-${matchId}`).value;
+        const time = document.getElementById(`group-match-time-${matchId}`).value;
+
+        if (!date && !time) {
+            alert('Please select a date and/or time for the match');
+            return;
+        }
+
+        try {
+            await this.tournamentManager.scheduleMatch(matchId, date, time, this.adminPassword);
+            
+            // Refresh groups display
+            this.groups = await this.tournamentManager.getGroups();
+            this.renderGroups();
+            
+            // Update the modal
+            const match = this.groups.matches.find(m => m.id === matchId);
+            if (match) {
+                this.renderGroupMatchDetail(match);
+            }
+            
+            alert('Group match scheduled successfully!');
+        } catch (error) {
+            console.error('Error scheduling group match:', error);
+            alert(error.message || 'Error scheduling match');
+        }
+    }
     
     renderResults() {
         const container = document.getElementById('results-container');
@@ -653,7 +1515,7 @@ class PoolTournamentApp {
     }
     
     async resetTournament() {
-        if (!confirm('Are you sure you want to reset all tournament results? This will clear the bracket and all match results, but keep participants.')) {
+        if (!confirm('Are you sure you want to reset all tournament results? This will clear the bracket, groups, and all match results, but keep participants.')) {
             return;
         }
         
@@ -663,9 +1525,10 @@ class PoolTournamentApp {
             this.participants = await this.tournamentManager.getParticipants();
             this.bracket = await this.tournamentManager.getBrackets();
             this.results = await this.tournamentManager.getResults();
+            this.groups = { stage: 'not-started', groups: [], matches: [] };
             this.renderParticipants();
-            this.renderBracket();
-            this.renderResults();
+            this.renderBrackets();
+            this.renderGroups();
             this.renderAdminParticipants();
         } catch (error) {
             console.error('Error resetting tournament:', error);
@@ -918,6 +1781,17 @@ class PoolTournamentApp {
             
             actionsContainer.innerHTML = actionsHTML;
             
+        } else if (this.isAdminLoggedIn && match.hasRecordedResult && isCompleted) {
+            actionsContainer.innerHTML = `
+                <div style="text-align: center;">
+                    <button class="btn btn-warning" onclick="app.reverseMatchResultFromDetail(${match.id})">
+                        🔄 Reverse Result
+                    </button>
+                    <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+                        This will undo the recorded result and remove the winner from subsequent rounds.
+                    </p>
+                </div>
+            `;
         } else if (!this.isAdminLoggedIn && !isCompleted && match.player1 && match.player2) {
             actionsContainer.innerHTML = `
                 <div style="text-align: center; color: #666;">
@@ -933,6 +1807,35 @@ class PoolTournamentApp {
         await this.recordMatchResult(matchId, winnerId);
         // Close modal and refresh
         document.getElementById('match-detail-modal').style.display = 'none';
+    }
+
+    async reverseMatchResultFromDetail(matchId) {
+        const match = this.findMatchById(matchId);
+        const winnerName = match.winner?.name || 'Unknown';
+        
+        if (!confirm(`Are you sure you want to reverse the result of this match?\n\nThis will undo ${winnerName}'s win and remove them from all subsequent rounds. Any matches they played in later rounds will need to be reversed first.`)) {
+            return;
+        }
+
+        try {
+            const result = await this.tournamentManager.reverseMatchResult(matchId, this.adminPassword);
+            
+            // Refresh data
+            this.bracket = result.bracket;
+            this.participants = await this.tournamentManager.getParticipants();
+            this.results = await this.tournamentManager.getResults();
+            
+            // Re-render everything
+            this.renderBrackets();
+            
+            // Update the modal to show the new match state
+            const updatedMatch = this.findMatchById(matchId);
+            this.renderMatchDetail(updatedMatch);
+            
+        } catch (error) {
+            console.error('Error reversing match result:', error);
+            alert(error.message || 'Error reversing match result');
+        }
     }
 
     async scheduleMatchFromDetail(matchId) {
@@ -996,6 +1899,47 @@ class PoolTournamentApp {
                 }
             }
         }
+    }
+
+    equalizeGroupHeights() {
+        const groupCards = document.querySelectorAll('.group-card-with-matches');
+        if (groupCards.length === 0) {
+            console.log('No group cards found for height equalization');
+            return;
+        }
+
+        console.log(`Equalizing heights for ${groupCards.length} group cards`);
+
+        // Reset heights first
+        groupCards.forEach(card => {
+            card.style.height = 'auto';
+            card.style.minHeight = 'auto';
+        });
+
+        // Force layout recalculation
+        setTimeout(() => {
+            // Calculate max height
+            let maxHeight = 0;
+            const heights = [];
+            
+            groupCards.forEach((card, index) => {
+                const height = card.offsetHeight;
+                heights.push(height);
+                if (height > maxHeight) {
+                    maxHeight = height;
+                }
+            });
+
+            console.log('Group card heights:', heights, 'Max height:', maxHeight);
+
+            // Set all cards to max height
+            groupCards.forEach(card => {
+                card.style.height = maxHeight + 'px';
+                card.style.minHeight = maxHeight + 'px';
+            });
+            
+            console.log('Heights equalized to:', maxHeight + 'px');
+        }, 10);
     }
 }
 
