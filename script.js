@@ -108,23 +108,35 @@ class PoolTournamentApp {
             this.advanceToNextRound();
         });
 
-        // Rules events
-        document.getElementById('edit-rules-btn').addEventListener('click', () => {
-            this.showRulesEditor();
-        });
+        // Rules events - check if elements exist before binding
+        const editRulesBtn = document.getElementById('edit-rules-btn');
+        if (editRulesBtn) {
+            editRulesBtn.addEventListener('click', () => {
+                this.showRulesEditor();
+            });
+        }
 
-        document.getElementById('cancel-rules-edit-btn').addEventListener('click', () => {
-            this.hideRulesEditor();
-        });
+        const cancelRulesBtn = document.getElementById('cancel-rules-edit-btn');
+        if (cancelRulesBtn) {
+            cancelRulesBtn.addEventListener('click', () => {
+                this.hideRulesEditor();
+            });
+        }
 
-        document.getElementById('add-rule-section-btn').addEventListener('click', () => {
-            this.addRuleSection();
-        });
+        const addRuleSectionBtn = document.getElementById('add-rule-section-btn');
+        if (addRuleSectionBtn) {
+            addRuleSectionBtn.addEventListener('click', () => {
+                this.addRuleSection();
+            });
+        }
 
-        document.getElementById('rules-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveRules();
-        });
+        const rulesForm = document.getElementById('rules-form');
+        if (rulesForm) {
+            rulesForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveRules();
+            });
+        }
     }
     
     switchSection(section) {
@@ -1547,7 +1559,7 @@ class PoolTournamentApp {
             this.results = await this.tournamentManager.getResults();
             this.groups = { stage: 'not-started', groups: [], matches: [] };
             this.renderParticipants();
-            this.renderBrackets();
+            this.renderBracket();
             this.renderGroups();
             this.renderAdminParticipants();
         } catch (error) {
@@ -1846,7 +1858,7 @@ class PoolTournamentApp {
             this.results = await this.tournamentManager.getResults();
             
             // Re-render everything
-            this.renderBrackets();
+            this.renderBracket();
             
             // Update the modal to show the new match state
             const updatedMatch = this.findMatchById(matchId);
