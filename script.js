@@ -675,7 +675,7 @@ class PoolTournamentApp {
                         </thead>
                         <tbody>
                             ${group.standings.map(player => `
-                                <tr class="${player.position <= 2 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                <tr class="${player.position === 1 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
                                     <td>${player.position}</td>
                                     <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
                                         ${player.image ? 
@@ -689,9 +689,9 @@ class PoolTournamentApp {
                             `).join('')}
                         </tbody>
                     </table>
-                    ${group.standings.length > 2 ? `
+                    ${group.standings.length > 1 ? `
                         <div class="qualification-note">
-                            <small>🏆 Top 2 qualify for knockouts</small>
+                            <small>🏆 Top 1 qualify for knockouts</small>
                         </div>
                     ` : ''}
                 </div>
@@ -724,7 +724,7 @@ class PoolTournamentApp {
                             </thead>
                             <tbody>
                                 ${group.standings.map(player => `
-                                    <tr class="${player.position <= 2 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                    <tr class="${player.position === 1 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
                                         <td>${player.position}</td>
                                         <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
                                             ${player.image ? 
@@ -738,9 +738,9 @@ class PoolTournamentApp {
                                 `).join('')}
                             </tbody>
                         </table>
-                        ${group.standings.length > 2 ? `
+                        ${group.standings.length > 1 ? `
                             <div class="qualification-note">
-                                <small>🏆 Top 2 qualify for knockouts</small>
+                                <small>🏆 Top 1 qualify for knockouts</small>
                             </div>
                         ` : ''}
                     </div>
@@ -821,8 +821,8 @@ class PoolTournamentApp {
         let hasTies = false;
         let explanation = "";
 
-        // Check for ties in top positions (positions 1-3, as ties around position 2 affect qualification)
-        for (let i = 0; i < Math.min(standings.length, 3); i++) {
+        // Check for ties in top positions (positions 1-2, as ties around position 1 affect qualification)
+        for (let i = 0; i < Math.min(standings.length, 2); i++) {
             const currentPlayer = standings[i];
             
             // Check if tied with next player
@@ -1012,7 +1012,7 @@ class PoolTournamentApp {
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                             <div><strong>Record:</strong> ${player.groupWins}-${player.groupLosses}</div>
                             <div><strong>Win Rate:</strong> ${player.groupWins + player.groupLosses > 0 ? Math.round((player.groupWins / (player.groupWins + player.groupLosses)) * 100) : 0}%</div>
-                            <div><strong>Status:</strong> ${player.position <= 2 ? '🏆 Qualified' : 'Eliminated'}</div>
+                            <div><strong>Status:</strong> ${player.position === 1 ? '🏆 Qualified' : 'Eliminated'}</div>
                         </div>
                     </div>
                 </div>

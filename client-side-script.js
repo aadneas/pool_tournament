@@ -293,19 +293,20 @@ class TournamentManager {
                 throw new Error(`Expected 8 qualified players, got ${qualifiedPlayers.length}. Complete group stage first.`);
             }
 
-            // Seed players: Mix groups to avoid same-group matchups in quarterfinals
-            // Group A1 vs Group B2, Group A2 vs Group B1, etc.
-            const groupA = standings.find(g => g.name === 'Group A').standings.slice(0, 2);
-            const groupB = standings.find(g => g.name === 'Group B').standings.slice(0, 2);
-            const groupC = standings.find(g => g.name === 'Group C').standings.slice(0, 2);
-            const groupD = standings.find(g => g.name === 'Group D').standings.slice(0, 2);
+            // Get top 1 player from each of the 8 groups
+            const groupA = standings.find(g => g.name === 'Group A').standings.slice(0, 1);
+            const groupB = standings.find(g => g.name === 'Group B').standings.slice(0, 1);
+            const groupC = standings.find(g => g.name === 'Group C').standings.slice(0, 1);
+            const groupD = standings.find(g => g.name === 'Group D').standings.slice(0, 1);
+            const groupE = standings.find(g => g.name === 'Group E').standings.slice(0, 1);
+            const groupF = standings.find(g => g.name === 'Group F').standings.slice(0, 1);
+            const groupG = standings.find(g => g.name === 'Group G').standings.slice(0, 1);
+            const groupH = standings.find(g => g.name === 'Group H').standings.slice(0, 1);
 
-            // Seeded bracket: A1-B2, C1-D2, B1-A2, D1-C2
+            // 8 players from group winners go directly to quarterfinals
             qualifiedPlayers = [
-                groupA[0], groupB[1], // Match 1: A1 vs B2
-                groupC[0], groupD[1], // Match 2: C1 vs D2  
-                groupB[0], groupA[1], // Match 3: B1 vs A2
-                groupD[0], groupC[1]  // Match 4: D1 vs C2
+                ...groupA, ...groupB, ...groupC, ...groupD,
+                ...groupE, ...groupF, ...groupG, ...groupH
             ];
         } else {
             // Fallback to regular participants if no group stage
@@ -566,7 +567,7 @@ class TournamentManager {
         await this.setParticipants(participants);
         await this.setBrackets({ rounds: [] });
         await this.setResults([]);
-        await this.setGroups({ stage: 'not-started', groups: [], matches: [], currentRound: 1, totalRounds: 4 });
+        await this.setGroups({ stage: 'not-started', groups: [], matches: [], currentRound: 1, totalRounds: 3 });
         
         return { success: true, message: 'Tournament results reset successfully' };
     }
@@ -736,17 +737,21 @@ class TournamentManager {
         // Shuffle participants for random group distribution
         const shuffled = [...participants].sort(() => Math.random() - 0.5);
         
-        // Create 4 groups
+        // Create 8 groups
         const groups = [
             { id: 1, name: 'Group A', players: [] },
             { id: 2, name: 'Group B', players: [] },
             { id: 3, name: 'Group C', players: [] },
-            { id: 4, name: 'Group D', players: [] }
+            { id: 4, name: 'Group D', players: [] },
+            { id: 5, name: 'Group E', players: [] },
+            { id: 6, name: 'Group F', players: [] },
+            { id: 7, name: 'Group G', players: [] },
+            { id: 8, name: 'Group H', players: [] }
         ];
 
         // Distribute players evenly across groups
         shuffled.forEach((player, index) => {
-            groups[index % 4].players.push({
+            groups[index % 8].players.push({
                 ...player,
                 groupWins: 0,
                 groupLosses: 0
@@ -756,7 +761,7 @@ class TournamentManager {
         const groupsData = {
             stage: 'in-progress',
             currentRound: 1,
-            totalRounds: 4,
+            totalRounds: 3,
             groups: groups,
             matches: []
         };
