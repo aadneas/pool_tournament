@@ -65,38 +65,10 @@
         <section id="rules" class="section">
             <div class="section-header">
                 <h2>📋 Tournament Rules</h2>
-                <div class="rules-edit-info">
-                    <small>💡 To edit rules: Modify the <code>rules.json</code> file in the repository and commit changes</small><br>
-                    <small>🖼️ To add images: Upload images to <code>images/</code> folder and reference them in <code>rules.json</code></small>
-                </div>
-                <button id="edit-rules-btn" class="btn btn-secondary" style="display: none;">🔒 Edit Rules (Admin)</button>
             </div>
             
             <div id="rules-container">
                 <div class="loading">Loading rules...</div>
-            </div>
-            
-            <!-- Rules Editor (Admin only) -->
-            <div id="rules-editor" class="form-container" style="display: none;">
-                <h3>Edit Tournament Rules (Admin Required)</h3>
-                <form id="rules-form">
-                    <div class="form-group">
-                        <label for="rules-title">Rules Title:</label>
-                        <input type="text" id="rules-title" placeholder="Enter rules title" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Rule Sections:</label>
-                        <div id="rules-sections"></div>
-                        <button type="button" id="add-rule-section-btn" class="btn btn-secondary">Add Section</button>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <input type="password" id="rules-admin-password" placeholder="Admin password" required>
-                        <button type="submit" class="btn btn-primary">Save Rules</button>
-                        <button type="button" id="cancel-rules-edit-btn" class="btn btn-secondary">Cancel</button>
-                    </div>
-                </form>
             </div>
         </section>
 

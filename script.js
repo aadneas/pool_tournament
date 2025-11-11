@@ -1965,63 +1965,31 @@ class PoolTournamentApp {
     // Rules Management
     async loadRules() {
         try {
-            // Show loading state
-            document.getElementById('rules-container').innerHTML = '<div class="loading">Loading rules...</div>';
-            
-            // Make sure tournament manager is available
-            if (!this.tournamentManager) {
-                throw new Error('Tournament manager not initialized');
-            }
-            
             const rules = await this.tournamentManager.getRules();
-            this.renderRules(rules);
-            
-            // Rules are now edited via rules.json file
-            // Hide edit button since rules are file-based
-            document.getElementById('edit-rules-btn').style.display = 'none';
+            if (rules.rulesUrl) {
+                // Redirect to external rules URL
+                window.open(rules.rulesUrl, '_blank');
+                document.getElementById('rules-container').innerHTML = `
+                    <div class="rules-redirect">
+                        <h3>Rules Page</h3>
+                        <p>Rules have been opened in a new tab.</p>
+                        <a href="${rules.rulesUrl}" target="_blank" class="btn btn-primary">Open Rules Again</a>
+                        <br><br>
+                        <small>To change the rules URL, edit the "rulesUrl" field in rules.json</small>
+                    </div>
+                `;
+            }
         } catch (error) {
-            console.error('Error loading rules:', error);
             document.getElementById('rules-container').innerHTML = `
                 <div class="error">
-                    <h3>Failed to load rules</h3>
-                    <p>Error: ${error.message}</p>
-                    <p>Please try refreshing the page or check your internet connection.</p>
-                    <button onclick="app.loadRules()" class="btn btn-primary">Retry</button>
+                    <h3>Rules Configuration Error</h3>
+                    <p>Please set "rulesUrl" in rules.json</p>
                 </div>
             `;
         }
     }
 
-    renderRules(rules) {
-        const container = document.getElementById('rules-container');
-        
-        let html = `<div class="rules-content">`;
-        html += `<h2>${rules.title}</h2>`;
-        
-        rules.sections.forEach(section => {
-            html += `
-                <div class="rule-section">
-                    <div class="rule-section-header">
-                        <h3>${section.title}</h3>
-                        ${section.image ? `
-                            <div class="rule-section-image">
-                                <img src="${section.image}" alt="${section.title}" 
-                                     onerror="this.style.display='none'" 
-                                     onclick="app.toggleImageEnlarge(this)"
-                                <small>Click image to enlarge</small>
-                            </div>
-                        ` : ''}
-                    </div>
-                    <ul>
-                        ${section.content.map(rule => `<li>${rule}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-        });
-        
-        html += `</div>`;
-        container.innerHTML = html;
-    }
+
 
     showRulesEditor() {
         document.getElementById('rules-editor').style.display = 'block';
@@ -2124,30 +2092,7 @@ class PoolTournamentApp {
         }
     }
 
-    // Image enlargement functionality for rules
-    toggleImageEnlarge(img) {
-        if (img.classList.contains('enlarged')) {
-            // Remove enlarged state
-            img.classList.remove('enlarged');
-            document.body.classList.remove('image-enlarged');
-            
-            // Remove backdrop if it exists
-            const backdrop = document.querySelector('.image-backdrop');
-            if (backdrop) {
-                backdrop.remove();
-            }
-        } else {
-            // Add enlarged state
-            img.classList.add('enlarged');
-            document.body.classList.add('image-enlarged');
-            
-            // Create backdrop
-            const backdrop = document.createElement('div');
-            backdrop.className = 'image-backdrop';
-            backdrop.onclick = () => this.toggleImageEnlarge(img);
-            document.body.appendChild(backdrop);
-        }
-    }
+
 }
 
 // Initialize the app when the page loads
