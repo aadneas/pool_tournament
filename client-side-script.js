@@ -792,19 +792,22 @@ class TournamentManager {
             const pairs = this.swissPairing(group.players, groupMatches, currentRound);
 
             for (const [player1, player2] of pairs) {
+                const cleanPlayer1 = this.cleanPlayerForMatch(player1);
+                const cleanPlayer2 = this.cleanPlayerForMatch(player2);
+                
                 const match = {
                     id: Date.now() + Math.random() * 1000,
                     groupId: group.id,
                     groupName: group.name,
                     round: currentRound,
-                    player1: player1,
-                    player2: player2 || null, // Handle byes
-                    winner: player2 ? null : player1, // Player with bye automatically wins
-                    completed: player2 ? false : true, // Byes are automatically completed
+                    player1: cleanPlayer1,
+                    player2: cleanPlayer2, // Handle byes
+                    winner: cleanPlayer2 ? null : cleanPlayer1, // Player with bye automatically wins
+                    completed: cleanPlayer2 ? false : true, // Byes are automatically completed
                     scheduledDate: null,
                     scheduledTime: null,
-                    hasRecordedResult: !player2, // Byes are automatically recorded
-                    isBye: !player2 // Mark bye matches
+                    hasRecordedResult: !cleanPlayer2, // Byes are automatically recorded
+                    isBye: !cleanPlayer2 // Mark bye matches
                 };
                 
                 groupsData.matches.push(match);
@@ -1023,8 +1026,8 @@ class TournamentManager {
                                 groupId: group.id,
                                 groupName: group.name,
                                 round: nextRound,
-                                player1: player1,
-                                player2: player2,
+                                player1: this.cleanPlayerForMatch(player1),
+                                player2: this.cleanPlayerForMatch(player2),
                                 winner: null,
                                 completed: false,
                                 scheduledDate: null,
@@ -1060,8 +1063,8 @@ class TournamentManager {
                                 groupId: group.id,
                                 groupName: group.name,
                                 round: nextRound,
-                                player1: player1,
-                                player2: player2,
+                                player1: this.cleanPlayerForMatch(player1),
+                                player2: this.cleanPlayerForMatch(player2),
                                 winner: null,
                                 completed: false,
                                 scheduledDate: null,
@@ -1080,6 +1083,14 @@ class TournamentManager {
         }
         
         return tiebreakerMatches;
+    }
+
+    cleanPlayerForMatch(player) {
+        if (!player) return null;
+        
+        // Create a clean player object without UI-specific properties
+        const { position, isManualWinner, ...cleanPlayer } = player;
+        return cleanPlayer;
     }
 
     async selectManualGroupWinner(groupId, winnerId, password) {
