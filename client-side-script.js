@@ -951,6 +951,19 @@ class TournamentManager {
                 return { success: true, message: `Tiebreaker round ${groupsData.currentRound} generated!`, groupsData };
             }
             
+            // Check if any groups need manual tiebreaker resolution
+            const groupsNeedingManualTiebreak = this.getGroupsNeedingManualTiebreak(groupsData);
+            if (groupsNeedingManualTiebreak.length > 0) {
+                await this.setGroups(groupsData);
+                return { 
+                    success: false, 
+                    message: `Cannot complete group stage: ${groupsNeedingManualTiebreak.length} group(s) need manual tiebreaker resolution`,
+                    needsManualTiebreak: true,
+                    groupsNeedingTiebreak: groupsNeedingManualTiebreak,
+                    groupsData 
+                };
+            }
+            
             // No tiebreakers needed, group stage is complete
             groupsData.stage = 'completed';
             await this.setGroups(groupsData);
@@ -983,7 +996,7 @@ class TournamentManager {
                     const groupMatches = groupsData.matches.filter(m => m.groupId === group.id);
                     
                     // Create all possible pairings that haven't been played yet in tiebreaker rounds
-                    const tiebreakerRounds = groupMatches.filter(m => m.isTiebreaker);
+                    const tiebreakerRounds = groupMatches.filter(m => m.isTiebreaker && m.completed);
                     const allPossiblePairs = [
                         [players[0], players[1]],
                         [players[0], players[2]], 
@@ -998,8 +1011,12 @@ class TournamentManager {
                         );
                     });
                     
-                    // If there are unplayed pairs, create matches for them
-                    if (unplayedPairs.length > 0) {
+                    // Check if we've already played tiebreaker matches but still have a tie
+                    if (unplayedPairs.length === 0 && tiebreakerRounds.length > 0) {
+                        // All tiebreaker matches played but still tied - mark for manual resolution
+                        group.needsManualTiebreak = true;
+                    } else if (unplayedPairs.length > 0) {
+                        // If there are unplayed pairs, create matches for them
                         for (const [player1, player2] of unplayedPairs) {
                             tiebreakerMatches.push({
                                 id: Date.now() + Math.random() * 1000,
@@ -1053,6 +1070,9 @@ class TournamentManager {
                                 isBye: false,
                                 isTiebreaker: true
                             });
+                        } else {
+                            // They've played but still tied - mark for manual resolution
+                            group.needsManualTiebreak = true;
                         }
                     }
                 }
@@ -1062,15 +1082,63 @@ class TournamentManager {
         return tiebreakerMatches;
     }
 
+    async selectManualGroupWinner(groupId, winnerId, password) {
+        if (!this.checkAdminPassword(password)) {
+            throw new Error('Invalid admin password');
+        }
+
+        const groupsData = await this.getGroups();
+        const group = groupsData.groups.find(g => g.id === groupId);
+        
+        if (!group) {
+            throw new Error('Group not found');
+        }
+
+        if (!group.needsManualTiebreak) {
+            throw new Error('This group does not need manual tiebreaker resolution');
+        }
+
+        const winnerPlayer = group.players.find(p => p.id === winnerId);
+        if (!winnerPlayer) {
+            throw new Error('Winner not found in this group');
+        }
+
+        // Mark the group as resolved and store the manual winner
+        group.needsManualTiebreak = false;
+        group.manualWinner = winnerPlayer;
+
+        await this.setGroups(groupsData);
+        return { success: true, message: `Manual winner selected for ${group.name}: ${winnerPlayer.name}`, groupsData };
+    }
+
+    getGroupsNeedingManualTiebreak(groupsData) {
+        return groupsData.groups.filter(group => group.needsManualTiebreak);
+    }
+
     getGroupStandings(groupsData) {
         return groupsData.groups.map(group => {
-            const sortedPlayers = [...group.players]
-                .sort((a, b) => this.comparePlayersWithTieBreaker(a, b, group.id, groupsData.matches))
-                .map((player, index) => ({ ...player, position: index + 1 }));
+            let sortedPlayers = [...group.players]
+                .sort((a, b) => this.comparePlayersWithTieBreaker(a, b, group.id, groupsData.matches));
+            
+            // If there's a manual winner, put them first
+            if (group.manualWinner) {
+                const manualWinnerIndex = sortedPlayers.findIndex(p => p.id === group.manualWinner.id);
+                if (manualWinnerIndex > 0) {
+                    // Move manual winner to first position
+                    const manualWinner = sortedPlayers.splice(manualWinnerIndex, 1)[0];
+                    sortedPlayers.unshift(manualWinner);
+                }
+            }
+            
+            const standingsWithPositions = sortedPlayers.map((player, index) => ({ 
+                ...player, 
+                position: index + 1,
+                isManualWinner: group.manualWinner && player.id === group.manualWinner.id
+            }));
             
             return {
                 ...group,
-                standings: sortedPlayers
+                standings: standingsWithPositions
             };
         });
     }
