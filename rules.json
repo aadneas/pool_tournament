@@ -4,7 +4,7 @@
   "sections": [
     {
       "title": "Tournament Format",
-      "image": "images/tournament-bracket.png",
+      "image": "images/tournament-bracket.jpg",
       "content": [
         "The tournament consists of two stages: Group Stage and Knockout Stage",
         "Group Stage uses Swiss format with multiple rounds",
@@ -23,7 +23,7 @@
     },
     {
       "title": "Match Rules",
-      "image": "images/8-ball_rack.png",
+      "image": "images/8-ball_rack.jpg",
       "content": [
         "All matches are single games (race to 1)",
         "Standard 8-ball pool rules apply",
