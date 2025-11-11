@@ -151,6 +151,23 @@
         </div>
     </div>
 
+    <!-- Manual Tiebreaker Modal -->
+    <div id="manual-tiebreaker-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>🏆 Manual Tiebreaker Resolution Required</h3>
+            <p><strong>Some groups have persistent ties that need manual resolution.</strong></p>
+            <p>Please select a winner for each group below:</p>
+            <div id="tiebreaker-groups-container">
+                <!-- Tiebreaker groups will be inserted here -->
+            </div>
+            <div class="modal-actions">
+                <button id="complete-manual-tiebreakers" class="btn btn-success">Complete Group Stage</button>
+                <button id="cancel-tiebreakers" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>

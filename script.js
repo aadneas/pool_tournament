@@ -76,6 +76,28 @@ class PoolTournamentApp {
             }
         });
         
+        // Manual tiebreaker modal
+        const tiebreakerModal = document.getElementById('manual-tiebreaker-modal');
+        const closeTiebreakerModal = tiebreakerModal.querySelector('.close');
+        
+        closeTiebreakerModal.addEventListener('click', () => {
+            tiebreakerModal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === tiebreakerModal) {
+                tiebreakerModal.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('complete-manual-tiebreakers').addEventListener('click', () => {
+            this.completeManualTiebreakers();
+        });
+        
+        document.getElementById('cancel-tiebreakers').addEventListener('click', () => {
+            tiebreakerModal.style.display = 'none';
+        });
+        
         document.getElementById('image-upload-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.uploadImage();
@@ -605,6 +627,14 @@ class PoolTournamentApp {
         
         try {
             const result = await this.tournamentManager.advanceToNextRound(this.adminPassword);
+            
+            // Check if manual tiebreaker resolution is needed
+            if (result.needsManualTiebreak) {
+                this.groups = result.groupsData;
+                this.showManualTiebreakerModal(result.groupsNeedingTiebreak);
+                return;
+            }
+            
             this.groups = result.groupsData;
             this.renderGroups();
             alert(result.message);
@@ -2231,6 +2261,88 @@ class PoolTournamentApp {
         } catch (error) {
             console.error('Error saving rules:', error);
             alert('Error saving rules');
+        }
+    }
+
+    showManualTiebreakerModal(groupsNeedingTiebreak) {
+        const modal = document.getElementById('manual-tiebreaker-modal');
+        const container = document.getElementById('tiebreaker-groups-container');
+        
+        let html = '';
+        groupsNeedingTiebreak.forEach(group => {
+            const standings = this.tournamentManager.getGroupStandings({ groups: [group], matches: this.groups.matches })[0];
+            const tiedPlayers = standings.standings.filter(player => {
+                const topPlayer = standings.standings[0];
+                return player.groupWins === topPlayer.groupWins && player.groupLosses === topPlayer.groupLosses;
+            });
+
+            html += `
+                <div class="tiebreaker-group" data-group-id="${group.id}">
+                    <h4>${group.name} - Select Winner</h4>
+                    <div class="tiebreaker-explanation">
+                        <p><strong>Tied Players:</strong> ${tiedPlayers.map(p => p.name).join(', ')}</p>
+                        <p>All players have ${tiedPlayers[0].groupWins} wins and ${tiedPlayers[0].groupLosses} losses.</p>
+                        <p>Please select which player should advance from this group:</p>
+                    </div>
+                    <div class="tiebreaker-players">
+                        ${tiedPlayers.map(player => `
+                            <label class="tiebreaker-option">
+                                <input type="radio" name="group-${group.id}-winner" value="${player.id}" required>
+                                <span class="player-info">
+                                    ${player.image ? 
+                                        `<img src="${player.image}" alt="${player.name}" class="player-avatar">` : 
+                                        `<div class="player-avatar-placeholder">📷</div>`
+                                    }
+                                    <span class="player-name">${player.name}</span>
+                                    <span class="player-record">(${player.groupWins}W-${player.groupLosses}L)</span>
+                                </span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        modal.style.display = 'block';
+    }
+
+    async completeManualTiebreakers() {
+        const modal = document.getElementById('manual-tiebreaker-modal');
+        const tiebreakerGroups = document.querySelectorAll('.tiebreaker-group');
+        
+        try {
+            // Check that all groups have a winner selected
+            for (let groupDiv of tiebreakerGroups) {
+                const groupId = parseInt(groupDiv.dataset.groupId);
+                const selectedWinner = groupDiv.querySelector(`input[name="group-${groupId}-winner"]:checked`);
+                
+                if (!selectedWinner) {
+                    alert(`Please select a winner for all groups before continuing.`);
+                    return;
+                }
+            }
+            
+            // Submit all manual winner selections
+            for (let groupDiv of tiebreakerGroups) {
+                const groupId = parseInt(groupDiv.dataset.groupId);
+                const selectedWinner = groupDiv.querySelector(`input[name="group-${groupId}-winner"]:checked`);
+                const winnerId = parseInt(selectedWinner.value);
+                
+                await this.tournamentManager.selectManualGroupWinner(groupId, winnerId, this.adminPassword);
+            }
+            
+            // Try to advance to next round again
+            const result = await this.tournamentManager.advanceToNextRound(this.adminPassword);
+            this.groups = result.groupsData;
+            this.renderGroups();
+            
+            modal.style.display = 'none';
+            alert(result.message);
+            
+        } catch (error) {
+            console.error('Error completing manual tiebreakers:', error);
+            alert(error.message || 'Error completing tiebreakers');
         }
     }
 
