@@ -1976,10 +1976,9 @@ class PoolTournamentApp {
             const rules = await this.tournamentManager.getRules();
             this.renderRules(rules);
             
-            // Show edit button if admin is logged in
-            if (this.isAdminLoggedIn) {
-                document.getElementById('edit-rules-btn').style.display = 'block';
-            }
+            // Rules are now edited via rules.json file
+            // Hide edit button since rules are file-based
+            document.getElementById('edit-rules-btn').style.display = 'none';
         } catch (error) {
             console.error('Error loading rules:', error);
             document.getElementById('rules-container').innerHTML = `
