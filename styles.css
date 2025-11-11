@@ -1442,3 +1442,103 @@ main {
         margin-right: 0;
     }
 }
+
+/* Rules Section Styles */
+.rules-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.rules-content h2 {
+    text-align: center;
+    color: #1e3c72;
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    border-bottom: 3px solid #1e3c72;
+    padding-bottom: 1rem;
+}
+
+.rule-section {
+    background: white;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 2px solid #e0e0e0;
+}
+
+.rule-section h3 {
+    color: #1e3c72;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0.5rem;
+}
+
+.rule-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.rule-section li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f5f5f5;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.rule-section li:before {
+    content: "→";
+    color: #1e3c72;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+.rule-section li:last-child {
+    border-bottom: none;
+}
+
+.rule-section-editor {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+}
+
+.rule-section-editor .form-group {
+    margin-bottom: 1rem;
+}
+
+.rule-section-editor label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: #495057;
+}
+
+.rule-section-editor input,
+.rule-section-editor textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.rule-section-editor textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.remove-section-btn {
+    margin-top: 1rem;
+}
+
+#add-rule-section-btn {
+    margin-top: 1rem;
+    width: 100%;
+}

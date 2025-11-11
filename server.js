@@ -29,6 +29,7 @@ const upload = multer({ storage: storage });
 const participantsFile = './data/participants.json';
 const bracketsFile = './data/brackets.json';
 const resultsFile = './data/results.json';
+const rulesFile = './data/rules.json';
 
 // Initialize data files if they don't exist
 const initializeDataFiles = () => {
@@ -46,6 +47,19 @@ const initializeDataFiles = () => {
   
   if (!fs.existsSync(resultsFile)) {
     fs.writeFileSync(resultsFile, JSON.stringify([]));
+  }
+  
+  if (!fs.existsSync(rulesFile)) {
+    const defaultRules = {
+      title: "Pool Tournament Rules",
+      sections: [
+        {
+          title: "Tournament Format",
+          content: ["Basic tournament rules will be displayed here.", "Edit the rules.json file to customize."]
+        }
+      ]
+    };
+    fs.writeFileSync(rulesFile, JSON.stringify(defaultRules, null, 2));
   }
 };
 
@@ -293,6 +307,31 @@ app.post('/api/matches/:id/result', checkAdminAuth, (req, res) => {
 app.get('/api/results', (req, res) => {
   const results = readJsonFile(resultsFile);
   res.json(results);
+});
+
+// Get tournament rules
+app.get('/api/rules', (req, res) => {
+  const rules = readJsonFile(rulesFile);
+  res.json(rules);
+});
+
+// Update tournament rules (admin only)
+app.put('/api/rules', checkAdminAuth, (req, res) => {
+  try {
+    const { title, sections } = req.body;
+    
+    if (!title || !sections || !Array.isArray(sections)) {
+      return res.status(400).json({ error: 'Invalid rules format' });
+    }
+    
+    const rules = { title, sections };
+    writeJsonFile(rulesFile, rules);
+    
+    res.json({ success: true, rules });
+  } catch (error) {
+    console.error('Error updating rules:', error);
+    res.status(500).json({ error: 'Failed to update rules' });
+  }
 });
 
 // Admin Routes

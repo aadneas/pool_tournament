@@ -107,6 +107,24 @@ class PoolTournamentApp {
         document.getElementById('next-round-btn').addEventListener('click', () => {
             this.advanceToNextRound();
         });
+
+        // Rules events
+        document.getElementById('edit-rules-btn').addEventListener('click', () => {
+            this.showRulesEditor();
+        });
+
+        document.getElementById('cancel-rules-edit-btn').addEventListener('click', () => {
+            this.hideRulesEditor();
+        });
+
+        document.getElementById('add-rule-section-btn').addEventListener('click', () => {
+            this.addRuleSection();
+        });
+
+        document.getElementById('rules-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveRules();
+        });
     }
     
     switchSection(section) {
@@ -131,6 +149,8 @@ class PoolTournamentApp {
             this.loadGroups();
         } else if (section === 'brackets') {
             this.loadBracket();
+        } else if (section === 'rules') {
+            this.loadRules();
         } else if (section === 'results') {
             this.loadResults();
         } else if (section === 'admin') {
@@ -1940,6 +1960,144 @@ class PoolTournamentApp {
             
             console.log('Heights equalized to:', maxHeight + 'px');
         }, 10);
+    }
+
+    // Rules Management
+    async loadRules() {
+        try {
+            const rules = await this.tournamentManager.getRules();
+            this.renderRules(rules);
+            
+            // Show edit button if admin is logged in
+            if (this.isAdminLoggedIn) {
+                document.getElementById('edit-rules-btn').style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error loading rules:', error);
+            document.getElementById('rules-container').innerHTML = '<div class="error">Failed to load rules</div>';
+        }
+    }
+
+    renderRules(rules) {
+        const container = document.getElementById('rules-container');
+        
+        let html = `<div class="rules-content">`;
+        html += `<h2>${rules.title}</h2>`;
+        
+        rules.sections.forEach(section => {
+            html += `
+                <div class="rule-section">
+                    <h3>${section.title}</h3>
+                    <ul>
+                        ${section.content.map(rule => `<li>${rule}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+
+    showRulesEditor() {
+        document.getElementById('rules-editor').style.display = 'block';
+        this.loadRulesForEditing();
+    }
+
+    hideRulesEditor() {
+        document.getElementById('rules-editor').style.display = 'none';
+        document.getElementById('rules-form').reset();
+    }
+
+    async loadRulesForEditing() {
+        try {
+            const rules = await this.tournamentManager.getRules();
+            
+            document.getElementById('rules-title').value = rules.title;
+            
+            const sectionsContainer = document.getElementById('rules-sections');
+            sectionsContainer.innerHTML = '';
+            
+            rules.sections.forEach((section, index) => {
+                this.addRuleSection(section, index);
+            });
+        } catch (error) {
+            console.error('Error loading rules for editing:', error);
+            alert('Failed to load rules for editing');
+        }
+    }
+
+    addRuleSection(sectionData = null, index = null) {
+        const sectionsContainer = document.getElementById('rules-sections');
+        const sectionIndex = index !== null ? index : sectionsContainer.children.length;
+        
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'rule-section-editor';
+        
+        sectionDiv.innerHTML = `
+            <div class="form-group">
+                <label>Section Title:</label>
+                <input type="text" class="section-title" value="${sectionData?.title || ''}" placeholder="Section title" required>
+            </div>
+            <div class="form-group">
+                <label>Rules:</label>
+                <textarea class="section-content" rows="4" placeholder="Enter rules (one per line)" required>${sectionData?.content?.join('\n') || ''}</textarea>
+            </div>
+            <button type="button" class="btn btn-danger remove-section-btn">Remove Section</button>
+            <hr>
+        `;
+        
+        sectionsContainer.appendChild(sectionDiv);
+        
+        // Add remove functionality
+        sectionDiv.querySelector('.remove-section-btn').addEventListener('click', () => {
+            sectionDiv.remove();
+        });
+    }
+
+    async saveRules() {
+        try {
+            const title = document.getElementById('rules-title').value.trim();
+            const password = document.getElementById('rules-admin-password').value;
+            
+            if (!title) {
+                alert('Please enter a rules title');
+                return;
+            }
+            
+            const sections = [];
+            const sectionEditors = document.querySelectorAll('.rule-section-editor');
+            
+            sectionEditors.forEach(editor => {
+                const sectionTitle = editor.querySelector('.section-title').value.trim();
+                const sectionContent = editor.querySelector('.section-content').value.trim();
+                
+                if (sectionTitle && sectionContent) {
+                    sections.push({
+                        title: sectionTitle,
+                        content: sectionContent.split('\n').map(line => line.trim()).filter(line => line)
+                    });
+                }
+            });
+            
+            if (sections.length === 0) {
+                alert('Please add at least one rule section');
+                return;
+            }
+            
+            const result = await this.tournamentManager.updateRules(title, sections, password);
+            
+            if (result.success) {
+                alert('Rules updated successfully!');
+                this.hideRulesEditor();
+                this.loadRules(); // Reload to show updated rules
+            } else {
+                alert('Failed to update rules');
+            }
+        } catch (error) {
+            console.error('Error saving rules:', error);
+            alert('Error saving rules');
+        }
     }
 }
 
