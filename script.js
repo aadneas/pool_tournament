@@ -647,8 +647,17 @@ class PoolTournamentApp {
             <div class="groups-header">
                 <h3>Round ${this.groups.currentRound} of ${this.groups.totalRounds} ${this.groups.stage === 'completed' ? '(COMPLETED)' : ''}</h3>
             </div>
-            <div class="groups-grid">
-                ${standings.map(group => this.renderGroupWithMatches(group)).join('')}
+            <div class="groups-standings-section">
+                <h3>Group Standings</h3>
+                <div class="groups-standings-grid">
+                    ${standings.map(group => this.renderGroupStandingsOnly(group)).join('')}
+                </div>
+            </div>
+            <div class="groups-matches-section">
+                <h3>Round ${this.groups.currentRound} Matches</h3>
+                <div class="groups-matches-grid">
+                    ${standings.map(group => this.renderGroupMatchesOnly(group)).join('')}
+                </div>
             </div>
         `;
         
@@ -663,9 +672,7 @@ class PoolTournamentApp {
                     await this.showPlayerDetails(playerId, groupId);
                 });
             });
-            
-            // Equalize group card heights after DOM is fully rendered
-            this.equalizeGroupHeights();
+
         }, 50);
     }
 
@@ -859,7 +866,115 @@ class PoolTournamentApp {
         return { hasTies, tiedPlayers, explanation };
     }
 
+    renderGroupStandingsOnly(group) {
+        // Check for ties in qualification positions
+        const tieBreakerInfo = this.getTieBreakerInfo(group);
+        
+        return `
+            <div class="group-standings-card">
+                <h4>${group.name}</h4>
+                <div class="group-standings">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Player</th>
+                                <th>W-L</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.standings.map(player => `
+                                <tr class="${player.position === 1 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                    <td>${player.position}</td>
+                                    <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
+                                        ${player.image ? 
+                                            `<img src="${player.image}" alt="${player.name}" class="mini-player-image">` :
+                                            `<div class="mini-player-placeholder">👤</div>`
+                                        }
+                                        ${this.truncateName(player.name, 10)}
+                                    </td>
+                                    <td>${player.groupWins}-${player.groupLosses}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    ${group.standings.length > 1 ? `
+                        <div class="qualification-note">
+                            <small>🏆 Top 1 qualify</small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
 
+    renderGroupMatchesOnly(group) {
+        const currentRoundMatches = this.groups.matches.filter(m => 
+            m.round === this.groups.currentRound && 
+            (m.groupId === group.id || m.groupId === parseInt(group.id) || m.groupId?.toString() === group.id)
+        );
+        
+        if (currentRoundMatches.length === 0) {
+            return `
+                <div class="group-matches-card">
+                    <h4>${group.name} Matches</h4>
+                    <p class="no-matches">No matches in current round</p>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="group-matches-card">
+                <h4>${group.name} Matches</h4>
+                <div class="matches-list">
+                    ${currentRoundMatches.map(match => `
+                        <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
+                            <div class="match-header">
+                                <span class="group-indicator">${group.name}</span>
+                                <span class="round-indicator">R${match.round}</span>
+                                ${this.renderMatchDateTime(match)}
+                            </div>
+                            <div class="match-players">
+                                ${match.isBye ? `
+                                    <div class="bye-display">
+                                        <div class="player">
+                                            ${match.player1?.image ? 
+                                                `<img src="${match.player1.image}" alt="${match.player1.name}" class="small-match-player-image">` :
+                                                `<div class="small-match-player-placeholder">👤</div>`
+                                            }
+                                            <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
+                                        </div>
+                                        <div class="bye-text">BYE</div>
+                                    </div>
+                                ` : `
+                                    <div class="player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
+                                        ${match.player1?.image ? 
+                                            `<img src="${match.player1.image}" alt="${match.player1.name}" class="small-match-player-image">` :
+                                            `<div class="small-match-player-placeholder">👤</div>`
+                                        }
+                                        <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
+                                    </div>
+                                    <div class="vs">VS</div>
+                                    <div class="player ${match.winner?.id === match.player2?.id ? 'winner' : ''}">
+                                        ${match.player2?.image ? 
+                                            `<img src="${match.player2.image}" alt="${match.player2.name}" class="small-match-player-image">` :
+                                            `<div class="small-match-player-placeholder">👤</div>`
+                                        }
+                                        <span>${this.truncateName(match.player2?.name || 'TBD', 12)}</span>
+                                    </div>
+                                `}
+                            </div>
+                            ${match.completed && !match.isBye ? `
+                                <div class="match-result">
+                                    Winner: ${match.winner?.name || 'Unknown'}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
 
     showDetailedTieBreaker(groupId) {
         const group = this.groups.groups.find(g => g.id === groupId);
