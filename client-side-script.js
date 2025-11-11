@@ -77,6 +77,9 @@ class TournamentManager {
                     }
                 });
                 console.log('Tournament database initialized');
+            } else {
+                // Check if we need to migrate from old 4-group system to new 8-group system
+                await this.migrateToEightGroups();
             }
         } catch (error) {
             console.error('Error initializing database:', error);
@@ -1129,6 +1132,32 @@ class TournamentManager {
 
         await this.setBrackets(bracket);
         return { success: true, message: 'Player assignment updated successfully' };
+    }
+
+    // Migration function to update from 4 groups to 8 groups
+    async migrateToEightGroups() {
+        try {
+            const groupsSnapshot = await this.database.ref('tournament/groups').once('value');
+            const groupsData = groupsSnapshot.val();
+            
+            if (groupsData && groupsData.groups && groupsData.groups.length === 4) {
+                console.log('Migrating from 4 groups to 8 groups system...');
+                
+                // If tournament is not started, we can safely migrate
+                if (groupsData.stage === 'not-started') {
+                    await this.database.ref('tournament/groups').update({
+                        totalRounds: 3, // Update to 3 rounds
+                        groups: [], // Clear groups so they get regenerated with 8 groups
+                        matches: []
+                    });
+                    console.log('Migration completed - tournament reset to use 8 groups with 3 rounds');
+                } else {
+                    console.log('Tournament in progress - migration skipped to preserve data');
+                }
+            }
+        } catch (error) {
+            console.error('Error during migration:', error);
+        }
     }
 
     // Rules Management
