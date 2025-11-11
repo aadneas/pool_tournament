@@ -1542,3 +1542,32 @@ main {
     margin-top: 1rem;
     width: 100%;
 }
+
+/* Loading and Error States */
+.loading {
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.1rem;
+    color: #666;
+}
+
+.error {
+    text-align: center;
+    padding: 3rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #dc3545;
+    color: #721c24;
+    max-width: 500px;
+    margin: 2rem auto;
+}
+
+.error h3 {
+    color: #dc3545;
+    margin-bottom: 1rem;
+}
+
+.error p {
+    margin-bottom: 1.5rem;
+    color: #6c757d;
+}

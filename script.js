@@ -1965,6 +1965,14 @@ class PoolTournamentApp {
     // Rules Management
     async loadRules() {
         try {
+            // Show loading state
+            document.getElementById('rules-container').innerHTML = '<div class="loading">Loading rules...</div>';
+            
+            // Make sure tournament manager is available
+            if (!this.tournamentManager) {
+                throw new Error('Tournament manager not initialized');
+            }
+            
             const rules = await this.tournamentManager.getRules();
             this.renderRules(rules);
             
@@ -1974,7 +1982,14 @@ class PoolTournamentApp {
             }
         } catch (error) {
             console.error('Error loading rules:', error);
-            document.getElementById('rules-container').innerHTML = '<div class="error">Failed to load rules</div>';
+            document.getElementById('rules-container').innerHTML = `
+                <div class="error">
+                    <h3>Failed to load rules</h3>
+                    <p>Error: ${error.message}</p>
+                    <p>Please try refreshing the page or check your internet connection.</p>
+                    <button onclick="app.loadRules()" class="btn btn-primary">Retry</button>
+                </div>
+            `;
         }
     }
 

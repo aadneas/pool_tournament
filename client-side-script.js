@@ -1130,16 +1130,78 @@ class TournamentManager {
     async getRules() {
         try {
             const snapshot = await this.database.ref('tournament/rules').once('value');
-            return snapshot.val() || {
+            let rules = snapshot.val();
+            
+            // If rules don't exist, create default ones
+            if (!rules) {
+                rules = {
+                    title: "Pool Tournament Rules",
+                    sections: [
+                        {
+                            title: "Tournament Format",
+                            content: [
+                                "The tournament consists of two stages: Group Stage and Knockout Stage",
+                                "Group Stage uses Swiss format with multiple rounds",
+                                "Top 2 players from each group advance to knockout stage",
+                                "Knockout stage is single elimination"
+                            ]
+                        },
+                        {
+                            title: "Group Stage Rules",
+                            content: [
+                                "Players are divided into groups of 5-6 players each",
+                                "Swiss pairing system ensures fair matchups",
+                                "Each round, players face opponents with similar records",
+                                "Tie-breakers: Head-to-head record, then opponent strength"
+                            ]
+                        },
+                        {
+                            title: "Match Rules",
+                            content: [
+                                "All matches are single games (race to 1)",
+                                "Standard 8-ball pool rules apply",
+                                "Players must call their shots clearly",
+                                "No coaching allowed during matches",
+                                "Time limit: 30 minutes per match"
+                            ]
+                        },
+                        {
+                            title: "Player Conduct",
+                            content: [
+                                "Respect all opponents and tournament officials",
+                                "No unsportsmanlike behavior tolerated",
+                                "Arrive on time for scheduled matches",
+                                "Follow all safety protocols in the venue"
+                            ]
+                        },
+                        {
+                            title: "Equipment",
+                            content: [
+                                "Standard pool tables with regulation size",
+                                "Players may use their own cues",
+                                "Tournament provides all balls and racks",
+                                "No modifications to equipment allowed"
+                            ]
+                        }
+                    ]
+                };
+                
+                // Save default rules to Firebase
+                await this.database.ref('tournament/rules').set(rules);
+                console.log('Default rules created and saved to Firebase');
+            }
+            
+            return rules;
+        } catch (error) {
+            console.error('Error getting rules:', error);
+            // Return fallback rules if Firebase fails
+            return {
                 title: "Pool Tournament Rules",
                 sections: [{
                     title: "Tournament Format",
                     content: ["Basic tournament rules will be displayed here.", "Edit the rules to customize."]
                 }]
             };
-        } catch (error) {
-            console.error('Error getting rules:', error);
-            throw new Error('Failed to load rules');
         }
     }
 
