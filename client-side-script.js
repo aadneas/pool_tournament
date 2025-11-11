@@ -979,13 +979,28 @@ class TournamentManager {
                 const allTied = players.every(p => p.groupWins === topPlayer.groupWins && p.groupLosses === topPlayer.groupLosses);
                 
                 if (allTied && players.length === 3) {
-                    // All 3 players tied - need tiebreaker matches
-                    // Use Swiss pairing to determine who should play next
+                    // All 3 players tied - need fair tiebreaker system
                     const groupMatches = groupsData.matches.filter(m => m.groupId === group.id);
-                    const pairs = this.swissPairing(players, groupMatches, nextRound);
                     
-                    for (const [player1, player2] of pairs) {
-                        if (player1 && player2) { // Skip byes in tiebreaker
+                    // Create all possible pairings that haven't been played yet in tiebreaker rounds
+                    const tiebreakerRounds = groupMatches.filter(m => m.isTiebreaker);
+                    const allPossiblePairs = [
+                        [players[0], players[1]],
+                        [players[0], players[2]], 
+                        [players[1], players[2]]
+                    ];
+                    
+                    // Find pairs that haven't been played in tiebreaker rounds yet
+                    const unplayedPairs = allPossiblePairs.filter(([p1, p2]) => {
+                        return !tiebreakerRounds.some(match => 
+                            (match.player1?.id === p1.id && match.player2?.id === p2.id) ||
+                            (match.player1?.id === p2.id && match.player2?.id === p1.id)
+                        );
+                    });
+                    
+                    // If there are unplayed pairs, create matches for them
+                    if (unplayedPairs.length > 0) {
+                        for (const [player1, player2] of unplayedPairs) {
                             tiebreakerMatches.push({
                                 id: Date.now() + Math.random() * 1000,
                                 groupId: group.id,
