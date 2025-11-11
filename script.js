@@ -677,9 +677,6 @@ class PoolTournamentApp {
     }
 
     renderGroup(group) {
-        // Check for ties in qualification positions
-        const tieBreakerInfo = this.getTieBreakerInfo(group);
-        
         return `
             <div class="group-card">
                 <h3>${group.name}</h3>
@@ -694,7 +691,7 @@ class PoolTournamentApp {
                         </thead>
                         <tbody>
                             ${group.standings.map(player => `
-                                <tr class="${player.position === 1 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                <tr>
                                     <td>${player.position}</td>
                                     <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
                                         ${player.image ? 
@@ -719,9 +716,6 @@ class PoolTournamentApp {
     }
 
     renderGroupWithMatches(group) {
-        // Check for ties in qualification positions
-        const tieBreakerInfo = this.getTieBreakerInfo(group);
-        
         // Get all rounds from current down to 1 (reversed order)
         const allRounds = [];
         for (let round = this.groups.currentRound; round >= 1; round--) {
@@ -743,7 +737,7 @@ class PoolTournamentApp {
                             </thead>
                             <tbody>
                                 ${group.standings.map(player => `
-                                    <tr class="${player.position === 1 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                    <tr>
                                         <td>${player.position}</td>
                                         <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
                                             ${player.image ? 
@@ -867,9 +861,6 @@ class PoolTournamentApp {
     }
 
     renderGroupStandingsOnly(group) {
-        // Check for ties in qualification positions
-        const tieBreakerInfo = this.getTieBreakerInfo(group);
-        
         return `
             <div class="group-standings-card">
                 <h4>${group.name}</h4>
@@ -884,7 +875,7 @@ class PoolTournamentApp {
                         </thead>
                         <tbody>
                             ${group.standings.map(player => `
-                                <tr class="${player.position === 1 ? 'qualified' : ''} ${tieBreakerInfo.tiedPlayers.includes(player.id) ? 'tied-position' : ''}">
+                                <tr>
                                     <td>${player.position}</td>
                                     <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
                                         ${player.image ? 
@@ -909,25 +900,46 @@ class PoolTournamentApp {
     }
 
     renderGroupMatchesOnly(group) {
-        const currentRoundMatches = this.groups.matches.filter(m => 
-            m.round === this.groups.currentRound && 
+        // Get all rounds for this group, sorted from newest to oldest
+        const allGroupMatches = this.groups.matches.filter(m => 
             (m.groupId === group.id || m.groupId === parseInt(group.id) || m.groupId?.toString() === group.id)
         );
         
-        if (currentRoundMatches.length === 0) {
+        if (allGroupMatches.length === 0) {
             return `
                 <div class="group-matches-card">
                     <h4>${group.name} Matches</h4>
-                    <p class="no-matches">No matches in current round</p>
+                    <p class="no-matches">No matches yet</p>
                 </div>
             `;
         }
 
+        // Group matches by round
+        const matchesByRound = {};
+        allGroupMatches.forEach(match => {
+            if (!matchesByRound[match.round]) {
+                matchesByRound[match.round] = [];
+            }
+            matchesByRound[match.round].push(match);
+        });
+
+        // Sort rounds from newest to oldest
+        const sortedRounds = Object.keys(matchesByRound)
+            .map(r => parseInt(r))
+            .sort((a, b) => b - a);
+
         return `
             <div class="group-matches-card">
                 <h4>${group.name} Matches</h4>
-                <div class="matches-list">
-                    ${currentRoundMatches.map(match => `
+                <div class="rounds-container">
+                    ${sortedRounds.map(round => `
+                        <div class="round-section ${round === this.groups.currentRound ? 'current-round' : 'completed-round'}">
+                            <h5 class="round-title">
+                                Round ${round}
+                                ${round === this.groups.currentRound ? ' (Current)' : ''}
+                            </h5>
+                            <div class="matches-list">
+                                ${matchesByRound[round].map(match => `
                         <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
                             <div class="match-header">
                                 <span class="group-indicator">${group.name}</span>
@@ -969,6 +981,9 @@ class PoolTournamentApp {
                                     Winner: ${match.winner?.name || 'Unknown'}
                                 </div>
                             ` : ''}
+                        </div>
+                                `).join('')}
+                            </div>
                         </div>
                     `).join('')}
                 </div>
