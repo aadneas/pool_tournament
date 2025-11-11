@@ -939,7 +939,19 @@ class TournamentManager {
         }
 
         if (groupsData.currentRound >= groupsData.totalRounds) {
-            // Group stage is complete, calculate final standings
+            // Check if we need tiebreaker matches before completing group stage
+            const tiebreakerMatches = await this.checkForTiebreakers(groupsData);
+            
+            if (tiebreakerMatches.length > 0) {
+                // Add tiebreaker matches and continue with a new round
+                groupsData.matches.push(...tiebreakerMatches);
+                groupsData.currentRound++;
+                groupsData.totalRounds++; // Extend total rounds to accommodate tiebreaker
+                await this.setGroups(groupsData);
+                return { success: true, message: `Tiebreaker round ${groupsData.currentRound} generated!`, groupsData };
+            }
+            
+            // No tiebreakers needed, group stage is complete
             groupsData.stage = 'completed';
             await this.setGroups(groupsData);
             return { success: true, message: 'Group stage completed!', groupsData };
@@ -951,6 +963,88 @@ class TournamentManager {
         await this.generateSwissRound(groupsData, password);
 
         return { success: true, message: `Round ${groupsData.currentRound} generated!`, groupsData };
+    }
+
+    async checkForTiebreakers(groupsData) {
+        const tiebreakerMatches = [];
+        const nextRound = groupsData.currentRound + 1;
+        
+        for (const group of groupsData.groups) {
+            const standings = this.getGroupStandings({ groups: [group], matches: groupsData.matches })[0];
+            const players = standings.standings;
+            
+            if (players.length === 3) {
+                // 3-player group: Check if all players are tied (same wins/losses)
+                const topPlayer = players[0];
+                const allTied = players.every(p => p.groupWins === topPlayer.groupWins && p.groupLosses === topPlayer.groupLosses);
+                
+                if (allTied && players.length === 3) {
+                    // All 3 players tied - need tiebreaker matches
+                    // Use Swiss pairing to determine who should play next
+                    const groupMatches = groupsData.matches.filter(m => m.groupId === group.id);
+                    const pairs = this.swissPairing(players, groupMatches, nextRound);
+                    
+                    for (const [player1, player2] of pairs) {
+                        if (player1 && player2) { // Skip byes in tiebreaker
+                            tiebreakerMatches.push({
+                                id: Date.now() + Math.random() * 1000,
+                                groupId: group.id,
+                                groupName: group.name,
+                                round: nextRound,
+                                player1: player1,
+                                player2: player2,
+                                winner: null,
+                                completed: false,
+                                scheduledDate: null,
+                                scheduledTime: null,
+                                hasRecordedResult: false,
+                                isBye: false,
+                                isTiebreaker: true
+                            });
+                        }
+                    }
+                }
+            } else if (players.length >= 4) {
+                // 4+ player group: Check if top 2 players are tied and haven't played each other
+                if (players.length >= 2) {
+                    const top2 = players.slice(0, 2);
+                    const [player1, player2] = top2;
+                    
+                    // Check if they're tied (same wins and losses)
+                    const areTied = player1.groupWins === player2.groupWins && 
+                                   player1.groupLosses === player2.groupLosses;
+                    
+                    if (areTied) {
+                        // Check if they've played each other
+                        const groupMatches = groupsData.matches.filter(m => m.groupId === group.id);
+                        const havePlayedEachOther = groupMatches.some(match => 
+                            (match.player1?.id === player1.id && match.player2?.id === player2.id) ||
+                            (match.player1?.id === player2.id && match.player2?.id === player1.id)
+                        );
+                        
+                        if (!havePlayedEachOther) {
+                            tiebreakerMatches.push({
+                                id: Date.now() + Math.random() * 1000,
+                                groupId: group.id,
+                                groupName: group.name,
+                                round: nextRound,
+                                player1: player1,
+                                player2: player2,
+                                winner: null,
+                                completed: false,
+                                scheduledDate: null,
+                                scheduledTime: null,
+                                hasRecordedResult: false,
+                                isBye: false,
+                                isTiebreaker: true
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        return tiebreakerMatches;
     }
 
     getGroupStandings(groupsData) {

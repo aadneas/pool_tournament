@@ -784,9 +784,9 @@ class PoolTournamentApp {
         }
 
         return roundMatches.map(match => `
-            <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
+            <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''} ${match.isTiebreaker ? 'tiebreaker-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
                 <div class="match-header">
-                    <span class="round-indicator">R${match.round}</span>
+                    <span class="round-indicator">R${match.round}${match.isTiebreaker ? ' (Tiebreaker)' : ''}</span>
                     ${this.renderMatchDateTime(match)}
                 </div>
                 <div class="match-players">
@@ -940,10 +940,10 @@ class PoolTournamentApp {
                             </h5>
                             <div class="matches-list">
                                 ${matchesByRound[round].map(match => `
-                        <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
+                        <div class="group-match-card ${match.completed ? 'completed' : ''} ${match.isBye ? 'bye-match' : ''} ${match.isTiebreaker ? 'tiebreaker-match' : ''}" onclick="app.openGroupMatchDetail(${match.id})">
                             <div class="match-header">
                                 <span class="group-indicator">${group.name}</span>
-                                <span class="round-indicator">R${match.round}</span>
+                                <span class="round-indicator">R${match.round}${match.isTiebreaker ? ' (Tiebreaker)' : ''}</span>
                                 ${this.renderMatchDateTime(match)}
                             </div>
                             <div class="match-players">
