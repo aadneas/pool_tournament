@@ -1,8 +1,10 @@
 {
+  "_comment": "To add images to rule sections, add an 'image' field with the path to your image file. Images should be placed in the 'images/' folder. Example: 'image': 'images/your-image.jpg'",
   "title": "Pool Tournament Rules",
   "sections": [
     {
       "title": "Tournament Format",
+      "image": "images/tournament-bracket.jpg",
       "content": [
         "The tournament consists of two stages: Group Stage and Knockout Stage",
         "Group Stage uses Swiss format with multiple rounds",
@@ -13,7 +15,7 @@
     {
       "title": "Group Stage Rules",
       "content": [
-        "Players are divided into groups of 5-6 players each",
+        "Players are divided into groups of 3-4 players each",
         "Swiss pairing system ensures fair matchups",
         "Each round, players face opponents with similar records",
         "Tie-breakers: Head-to-head record, then opponent strength"
@@ -21,6 +23,7 @@
     },
     {
       "title": "Match Rules",
+      "image": "images/pool-table.jpg",
       "content": [
         "All matches are single games (race to 1)",
         "Standard 8-ball pool rules apply",
@@ -36,15 +39,6 @@
         "No unsportsmanlike behavior tolerated",
         "Arrive on time for scheduled matches",
         "Follow all safety protocols in the venue"
-      ]
-    },
-    {
-      "title": "Equipment",
-      "content": [
-        "Standard pool tables with regulation size",
-        "Players may use their own cues",
-        "Tournament provides all balls and racks",
-        "No modifications to equipment allowed"
       ]
     }
   ]

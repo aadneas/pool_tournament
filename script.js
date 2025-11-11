@@ -2001,7 +2001,17 @@ class PoolTournamentApp {
         rules.sections.forEach(section => {
             html += `
                 <div class="rule-section">
-                    <h3>${section.title}</h3>
+                    <div class="rule-section-header">
+                        <h3>${section.title}</h3>
+                        ${section.image ? `
+                            <div class="rule-section-image">
+                                <img src="${section.image}" alt="${section.title}" 
+                                     onerror="this.style.display='none'" 
+                                     onclick="app.toggleImageEnlarge(this)"
+                                <small>Click image to enlarge</small>
+                            </div>
+                        ` : ''}
+                    </div>
                     <ul>
                         ${section.content.map(rule => `<li>${rule}</li>`).join('')}
                     </ul>
@@ -2111,6 +2121,31 @@ class PoolTournamentApp {
         } catch (error) {
             console.error('Error saving rules:', error);
             alert('Error saving rules');
+        }
+    }
+
+    // Image enlargement functionality for rules
+    toggleImageEnlarge(img) {
+        if (img.classList.contains('enlarged')) {
+            // Remove enlarged state
+            img.classList.remove('enlarged');
+            document.body.classList.remove('image-enlarged');
+            
+            // Remove backdrop if it exists
+            const backdrop = document.querySelector('.image-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+        } else {
+            // Add enlarged state
+            img.classList.add('enlarged');
+            document.body.classList.add('image-enlarged');
+            
+            // Create backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'image-backdrop';
+            backdrop.onclick = () => this.toggleImageEnlarge(img);
+            document.body.appendChild(backdrop);
         }
     }
 }
