@@ -1073,10 +1073,8 @@ class TournamentManager {
                                 isBye: false,
                                 isTiebreaker: true
                             });
-                        } else {
-                            // They've played but still tied - mark for manual resolution
-                            group.needsManualTiebreak = true;
                         }
+                        // Note: No manual tiebreaker for 4+ groups - head-to-head always produces a winner
                     }
                 }
             }
