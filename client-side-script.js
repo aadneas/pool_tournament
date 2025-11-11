@@ -288,23 +288,19 @@ class TournamentManager {
         if (groupsData.stage === 'completed') {
             // Get top 1 player from each of the 8 groups
             const standings = this.getGroupStandings(groupsData);
-            const groupA = standings.find(g => g.name === 'Group A')?.standings.slice(0, 1) || [];
-            const groupB = standings.find(g => g.name === 'Group B')?.standings.slice(0, 1) || [];
-            const groupC = standings.find(g => g.name === 'Group C')?.standings.slice(0, 1) || [];
-            const groupD = standings.find(g => g.name === 'Group D')?.standings.slice(0, 1) || [];
-            const groupE = standings.find(g => g.name === 'Group E')?.standings.slice(0, 1) || [];
-            const groupF = standings.find(g => g.name === 'Group F')?.standings.slice(0, 1) || [];
-            const groupG = standings.find(g => g.name === 'Group G')?.standings.slice(0, 1) || [];
-            const groupH = standings.find(g => g.name === 'Group H')?.standings.slice(0, 1) || [];
+            
+            // Debug logging
+            console.log('Number of groups:', standings.length);
+            console.log('Group names:', standings.map(g => g.name));
+            
+            // Take top 1 player from each group directly
+            qualifiedPlayers = standings.map(group => group.standings[0]).filter(player => player);
 
-            // 8 players from group winners go directly to quarterfinals
-            qualifiedPlayers = [
-                ...groupA, ...groupB, ...groupC, ...groupD,
-                ...groupE, ...groupF, ...groupG, ...groupH
-            ];
+            console.log('Qualified players count:', qualifiedPlayers.length);
+            console.log('Qualified players:', qualifiedPlayers.map(p => p.name));
 
             if (qualifiedPlayers.length !== 8) {
-                throw new Error(`Expected 8 qualified players, got ${qualifiedPlayers.length}. Complete group stage first.`);
+                throw new Error(`Expected 8 qualified players, got ${qualifiedPlayers.length}. Complete group stage first. Groups: ${standings.map(g => g.name).join(', ')}`);
             }
         } else {
             // Fallback to regular participants if no group stage
