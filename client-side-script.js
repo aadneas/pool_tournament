@@ -293,8 +293,11 @@ class TournamentManager {
             console.log('Number of groups:', standings.length);
             console.log('Group names:', standings.map(g => g.name));
             
-            // Take top 1 player from each group directly
-            qualifiedPlayers = standings.map(group => group.standings[0]).filter(player => player);
+            // Take top 1 player from each group directly and clean them for bracket use
+            qualifiedPlayers = standings.map(group => {
+                const player = group.standings[0];
+                return player ? this.cleanPlayerForMatch(player) : null;
+            }).filter(player => player);
 
             console.log('Qualified players count:', qualifiedPlayers.length);
             console.log('Qualified players:', qualifiedPlayers.map(p => p.name));
