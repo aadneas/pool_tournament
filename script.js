@@ -904,19 +904,25 @@ class PoolTournamentApp {
                             </tr>
                         </thead>
                         <tbody>
-                            ${group.standings.map(player => `
+                            ${group.standings.map(player => {
+                                // Get current participant data to ensure we have the latest image
+                                const currentParticipant = this.participants.find(p => p.id === player.id);
+                                const currentImage = currentParticipant ? currentParticipant.image : player.image;
+                                
+                                return `
                                 <tr>
                                     <td>${player.position}</td>
                                     <td class="player-name clickable-player" data-player-id="${player.id}" data-group-id="${group.id}" style="cursor: pointer;">
-                                        ${player.image ? 
-                                            `<img src="${player.image}" alt="${player.name}" class="mini-player-image">` :
+                                        ${currentImage ? 
+                                            `<img src="${currentImage}" alt="${player.name}" class="mini-player-image">` :
                                             `<div class="mini-player-placeholder">👤</div>`
                                         }
                                         ${this.truncateName(player.name, 10)}
                                     </td>
                                     <td>${player.groupWins}-${player.groupLosses}</td>
                                 </tr>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                     ${group.standings.length > 1 ? `
@@ -980,8 +986,8 @@ class PoolTournamentApp {
                                 ${match.isBye ? `
                                     <div class="bye-display">
                                         <div class="player">
-                                            ${match.player1?.image ? 
-                                                `<img src="${match.player1.image}" alt="${match.player1.name}" class="small-match-player-image">` :
+                                            ${this.getCurrentPlayerImage(match.player1) ? 
+                                                `<img src="${this.getCurrentPlayerImage(match.player1)}" alt="${match.player1.name}" class="small-match-player-image">` :
                                                 `<div class="small-match-player-placeholder">👤</div>`
                                             }
                                             <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
@@ -990,16 +996,16 @@ class PoolTournamentApp {
                                     </div>
                                 ` : `
                                     <div class="player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
-                                        ${match.player1?.image ? 
-                                            `<img src="${match.player1.image}" alt="${match.player1.name}" class="small-match-player-image">` :
+                                        ${this.getCurrentPlayerImage(match.player1) ? 
+                                            `<img src="${this.getCurrentPlayerImage(match.player1)}" alt="${match.player1.name}" class="small-match-player-image">` :
                                             `<div class="small-match-player-placeholder">👤</div>`
                                         }
                                         <span>${this.truncateName(match.player1?.name || 'TBD', 12)}</span>
                                     </div>
                                     <div class="vs">VS</div>
                                     <div class="player ${match.winner?.id === match.player2?.id ? 'winner' : ''}">
-                                        ${match.player2?.image ? 
-                                            `<img src="${match.player2.image}" alt="${match.player2.name}" class="small-match-player-image">` :
+                                        ${this.getCurrentPlayerImage(match.player2) ? 
+                                            `<img src="${this.getCurrentPlayerImage(match.player2)}" alt="${match.player2.name}" class="small-match-player-image">` :
                                             `<div class="small-match-player-placeholder">👤</div>`
                                         }
                                         <span>${this.truncateName(match.player2?.name || 'TBD', 12)}</span>
@@ -1394,8 +1400,8 @@ class PoolTournamentApp {
         if (match.isBye) {
             playersContainer.innerHTML = `
                 <div class="match-detail-player winner">
-                    ${match.player1?.image ? 
-                        `<img src="${match.player1.image}" alt="${match.player1.name}" class="match-detail-player-image">` :
+                    ${this.getCurrentPlayerImage(match.player1) ? 
+                        `<img src="${this.getCurrentPlayerImage(match.player1)}" alt="${match.player1.name}" class="match-detail-player-image">` :
                         `<div class="match-detail-player-placeholder">👤</div>`
                     }
                     <div class="match-detail-player-name">${match.player1?.name}</div>
@@ -1409,8 +1415,8 @@ class PoolTournamentApp {
         } else {
             playersContainer.innerHTML = `
                 <div class="match-detail-player ${match.winner?.id === match.player1?.id ? 'winner' : ''}">
-                    ${match.player1?.image ? 
-                        `<img src="${match.player1.image}" alt="${match.player1.name}" class="match-detail-player-image">` :
+                    ${this.getCurrentPlayerImage(match.player1) ? 
+                        `<img src="${this.getCurrentPlayerImage(match.player1)}" alt="${match.player1.name}" class="match-detail-player-image">` :
                         `<div class="match-detail-player-placeholder">👤</div>`
                     }
                     <div class="match-detail-player-name">${match.player1?.name}</div>
@@ -1418,8 +1424,8 @@ class PoolTournamentApp {
                 </div>
                 <div class="match-detail-vs">VS</div>
                 <div class="match-detail-player ${match.winner?.id === match.player2?.id ? 'winner' : ''}">
-                    ${match.player2?.image ? 
-                        `<img src="${match.player2.image}" alt="${match.player2.name}" class="match-detail-player-image">` :
+                    ${this.getCurrentPlayerImage(match.player2) ? 
+                        `<img src="${this.getCurrentPlayerImage(match.player2)}" alt="${match.player2.name}" class="match-detail-player-image">` :
                         `<div class="match-detail-player-placeholder">👤</div>`
                     }
                     <div class="match-detail-player-name">${match.player2?.name}</div>
@@ -2344,6 +2350,13 @@ class PoolTournamentApp {
             console.error('Error completing manual tiebreakers:', error);
             alert(error.message || 'Error completing tiebreakers');
         }
+    }
+
+    // Helper function to get current participant image (for updated images)
+    getCurrentPlayerImage(player) {
+        if (!player) return null;
+        const currentParticipant = this.participants.find(p => p.id === player.id);
+        return currentParticipant ? currentParticipant.image : player.image;
     }
 
 
