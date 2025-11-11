@@ -986,6 +986,11 @@ class TournamentManager {
         const nextRound = groupsData.currentRound + 1;
         
         for (const group of groupsData.groups) {
+            // Skip groups that already have a manual winner selected
+            if (group.manualWinner) {
+                continue;
+            }
+            
             const standings = this.getGroupStandings({ groups: [group], matches: groupsData.matches })[0];
             const players = standings.standings;
             
@@ -1121,7 +1126,7 @@ class TournamentManager {
     }
 
     getGroupsNeedingManualTiebreak(groupsData) {
-        return groupsData.groups.filter(group => group.needsManualTiebreak);
+        return groupsData.groups.filter(group => group.needsManualTiebreak && !group.manualWinner);
     }
 
     getGroupStandings(groupsData) {
