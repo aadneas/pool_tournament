@@ -1982,3 +1982,65 @@ body.image-enlarged {
         flex-direction: column;
     }
 }
+
+/* Insert Participant Modal Styles */
+.insert-form {
+    margin: 1rem 0;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.preview-section {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.preview-section h4 {
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+.preview-info p {
+    margin: 0.25rem 0;
+    line-height: 1.4;
+}
+
+.preview-note {
+    font-style: italic;
+    color: #6c757d;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.error {
+    color: #dc3545;
+    font-style: italic;
+}

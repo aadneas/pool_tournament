@@ -97,13 +97,45 @@ class PoolTournamentApp {
         document.getElementById('cancel-tiebreakers').addEventListener('click', () => {
             tiebreakerModal.style.display = 'none';
         });
+
+        // Insert participant modal
+        const insertModal = document.getElementById('insert-participant-modal');
+        const closeInsertModal = insertModal.querySelector('.close');
         
+        closeInsertModal.addEventListener('click', () => {
+            insertModal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === insertModal) {
+                insertModal.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('insert-participant-btn').addEventListener('click', () => {
+            this.showInsertParticipantModal();
+        });
+        
+        document.getElementById('participant-select').addEventListener('change', () => {
+            this.updateInsertionPreview();
+        });
+        
+        document.getElementById('group-select').addEventListener('change', () => {
+            this.updateInsertionPreview();
+        });
+        
+        document.getElementById('confirm-insert-participant').addEventListener('click', () => {
+            this.insertParticipant();
+        });
+        
+        document.getElementById('cancel-insert-participant').addEventListener('click', () => {
+            insertModal.style.display = 'none';
+        });
+
         document.getElementById('image-upload-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.uploadImage();
-        });
-        
-        // Admin functionality
+        });        // Admin functionality
         document.getElementById('admin-login-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.adminLogin();
@@ -659,9 +691,13 @@ class PoolTournamentApp {
             return;
         }
 
-        // Show/hide next round button
+        // Show/hide control buttons
+        const insertParticipantBtn = document.getElementById('insert-participant-btn');
+        
         if (this.groups.stage === 'in-progress' && this.isAdminLoggedIn) {
             nextRoundBtn.style.display = 'inline-block';
+            insertParticipantBtn.style.display = 'inline-block';
+            
             const currentRoundMatches = this.groups.matches.filter(m => m.round === this.groups.currentRound);
             const completedMatches = currentRoundMatches.filter(m => m.completed);
             nextRoundBtn.textContent = completedMatches.length === currentRoundMatches.length ? 
@@ -669,6 +705,7 @@ class PoolTournamentApp {
                 `Next Round (${completedMatches.length}/${currentRoundMatches.length} complete)`;
         } else {
             nextRoundBtn.style.display = 'none';
+            insertParticipantBtn.style.display = 'none';
         }
 
         const standings = this.tournamentManager.getGroupStandings(this.groups);
@@ -2357,6 +2394,136 @@ class PoolTournamentApp {
         if (!player) return null;
         const currentParticipant = this.participants.find(p => p.id === player.id);
         return currentParticipant ? currentParticipant.image : player.image;
+    }
+
+    async showInsertParticipantModal() {
+        const modal = document.getElementById('insert-participant-modal');
+        const participantSelect = document.getElementById('participant-select');
+        const groupSelect = document.getElementById('group-select');
+        
+        try {
+            // Get participants not in any group
+            const participantsInGroups = this.groups.groups.flatMap(g => g.players.map(p => p.id));
+            const availableParticipants = this.participants.filter(p => !participantsInGroups.includes(p.id));
+            
+            // Get groups with available bye matches
+            const availableGroups = await this.tournamentManager.getAvailableGroupsForInsertion();
+            
+            if (availableParticipants.length === 0) {
+                alert('No participants available for insertion. All participants are already in groups.');
+                return;
+            }
+            
+            if (availableGroups.length === 0) {
+                alert('No groups have available bye matches for participant insertion.');
+                return;
+            }
+            
+            // Populate participants dropdown
+            participantSelect.innerHTML = '<option value="">Choose a participant...</option>';
+            availableParticipants.forEach(participant => {
+                participantSelect.innerHTML += `<option value="${participant.id}">${participant.name}</option>`;
+            });
+            
+            // Populate groups dropdown
+            groupSelect.innerHTML = '<option value="">Choose a group...</option>';
+            availableGroups.forEach(group => {
+                groupSelect.innerHTML += `<option value="${group.id}">${group.name} (${group.availableByeMatches} bye matches, next in Round ${group.nextByeRound})</option>`;
+            });
+            
+            // Reset form
+            document.getElementById('insertion-preview').style.display = 'none';
+            document.getElementById('confirm-insert-participant').disabled = true;
+            
+            modal.style.display = 'block';
+        } catch (error) {
+            console.error('Error showing insert participant modal:', error);
+            alert(error.message || 'Error loading insertion options');
+        }
+    }
+
+    async updateInsertionPreview() {
+        const participantId = parseInt(document.getElementById('participant-select').value);
+        const groupId = parseInt(document.getElementById('group-select').value);
+        const previewContainer = document.getElementById('insertion-preview');
+        const confirmBtn = document.getElementById('confirm-insert-participant');
+        
+        if (!participantId || !groupId) {
+            previewContainer.style.display = 'none';
+            confirmBtn.disabled = true;
+            return;
+        }
+        
+        try {
+            // Find participant and group
+            const participant = this.participants.find(p => p.id === participantId);
+            const availableGroups = await this.tournamentManager.getAvailableGroupsForInsertion();
+            const group = availableGroups.find(g => g.id === groupId);
+            
+            if (!participant || !group) {
+                previewContainer.style.display = 'none';
+                confirmBtn.disabled = true;
+                return;
+            }
+            
+            // Find the next bye match in this group
+            const byeMatches = this.groups.matches.filter(m => 
+                m.groupId === groupId && 
+                m.isBye && 
+                m.round >= this.groups.currentRound &&
+                !m.hasRecordedResult
+            ).sort((a, b) => a.round - b.round);
+            
+            const nextByeMatch = byeMatches[0];
+            
+            previewContainer.innerHTML = `
+                <h4>Preview</h4>
+                <div class="preview-info">
+                    <p><strong>Participant:</strong> ${participant.name}</p>
+                    <p><strong>Group:</strong> ${group.name}</p>
+                    <p><strong>Will play against:</strong> ${nextByeMatch.player1.name}</p>
+                    <p><strong>In Round:</strong> ${nextByeMatch.round}</p>
+                    <p class="preview-note">This will convert a bye match into a regular match.</p>
+                </div>
+            `;
+            
+            previewContainer.style.display = 'block';
+            confirmBtn.disabled = false;
+            
+        } catch (error) {
+            console.error('Error updating insertion preview:', error);
+            previewContainer.innerHTML = '<p class="error">Error loading preview</p>';
+            previewContainer.style.display = 'block';
+            confirmBtn.disabled = true;
+        }
+    }
+
+    async insertParticipant() {
+        const participantId = parseInt(document.getElementById('participant-select').value);
+        const groupId = parseInt(document.getElementById('group-select').value);
+        
+        if (!participantId || !groupId) {
+            alert('Please select both a participant and a group');
+            return;
+        }
+        
+        const password = prompt('Enter admin password to insert participant:');
+        if (!password) return;
+        
+        try {
+            const result = await this.tournamentManager.insertParticipantIntoGroup(participantId, groupId, password);
+            alert(result.message);
+            
+            // Close modal
+            document.getElementById('insert-participant-modal').style.display = 'none';
+            
+            // Refresh groups display
+            this.renderGroups();
+            
+        } catch (error) {
+            console.error('Error inserting participant:', error);
+            alert(error.message || 'Error inserting participant into group');
+        }
     }
 
 

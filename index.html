@@ -45,6 +45,7 @@
                 <div class="group-controls">
                     <button id="generate-groups-btn" class="btn btn-primary">🔒 Generate Groups (Admin)</button>
                     <button id="next-round-btn" class="btn btn-success" style="display: none;">🔒 Generate Next Round (Admin)</button>
+                    <button id="insert-participant-btn" class="btn btn-secondary" style="display: none;">🔒 Insert Participant (Admin)</button>
                 </div>
             </div>
             
@@ -164,6 +165,40 @@
             <div class="modal-actions">
                 <button id="complete-manual-tiebreakers" class="btn btn-success">Complete Group Stage</button>
                 <button id="cancel-tiebreakers" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insert Participant Modal -->
+    <div id="insert-participant-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>🔄 Insert Participant into Group</h3>
+            <p><strong>Add a late participant by replacing a bye match</strong></p>
+            
+            <div class="insert-form">
+                <div class="form-group">
+                    <label for="participant-select">Select Participant:</label>
+                    <select id="participant-select" class="form-control">
+                        <option value="">Choose a participant...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="group-select">Select Group:</label>
+                    <select id="group-select" class="form-control">
+                        <option value="">Choose a group...</option>
+                    </select>
+                </div>
+                
+                <div id="insertion-preview" class="preview-section" style="display: none;">
+                    <!-- Preview will be shown here -->
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button id="confirm-insert-participant" class="btn btn-success" disabled>Insert Participant</button>
+                <button id="cancel-insert-participant" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
     </div>

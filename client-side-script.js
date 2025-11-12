@@ -1386,6 +1386,107 @@ class TournamentManager {
             throw new Error('Failed to update rules');
         }
     }
+
+    async insertParticipantIntoGroup(participantId, groupId, password) {
+        if (!this.checkAdminPassword(password)) {
+            throw new Error('Invalid admin password');
+        }
+
+        const groupsData = await this.getGroups();
+        const participants = await this.getParticipants();
+        
+        if (groupsData.stage !== 'in-progress') {
+            throw new Error('Can only insert participants during active group stage');
+        }
+
+        // Find the participant and group
+        const participant = participants.find(p => p.id === participantId);
+        if (!participant) {
+            throw new Error('Participant not found');
+        }
+
+        const group = groupsData.groups.find(g => g.id === groupId);
+        if (!group) {
+            throw new Error('Group not found');
+        }
+
+        // Check if participant is already in a group
+        const existingGroup = groupsData.groups.find(g => 
+            g.players.some(p => p.id === participantId)
+        );
+        if (existingGroup) {
+            throw new Error(`Participant is already in ${existingGroup.name}`);
+        }
+
+        // Find available bye matches in this group from current or future rounds
+        const byeMatches = groupsData.matches.filter(m => 
+            m.groupId === groupId && 
+            m.isBye && 
+            m.round >= groupsData.currentRound &&
+            !m.hasRecordedResult
+        );
+
+        if (byeMatches.length === 0) {
+            throw new Error('No available bye matches in this group to replace');
+        }
+
+        // Take the earliest available bye match
+        const byeMatch = byeMatches.sort((a, b) => a.round - b.round)[0];
+        const byePlayer = byeMatch.player1;
+
+        // Add participant to group with current stats
+        const newGroupPlayer = {
+            ...participant,
+            groupWins: 0,
+            groupLosses: 0
+        };
+        group.players.push(newGroupPlayer);
+
+        // Convert bye match to regular match
+        byeMatch.player2 = this.cleanPlayerForMatch(newGroupPlayer);
+        byeMatch.isBye = false;
+        byeMatch.completed = false;
+        byeMatch.hasRecordedResult = false;
+        byeMatch.winner = null;
+
+        await this.setGroups(groupsData);
+
+        return { 
+            success: true, 
+            message: `${participant.name} added to ${group.name} and will face ${byePlayer.name} in Round ${byeMatch.round}`,
+            groupsData 
+        };
+    }
+
+    async getAvailableGroupsForInsertion() {
+        const groupsData = await this.getGroups();
+        
+        if (groupsData.stage !== 'in-progress') {
+            return [];
+        }
+
+        // Find groups that have bye matches in current or future rounds
+        const availableGroups = [];
+        
+        for (const group of groupsData.groups) {
+            const byeMatches = groupsData.matches.filter(m => 
+                m.groupId === group.id && 
+                m.isBye && 
+                m.round >= groupsData.currentRound &&
+                !m.hasRecordedResult
+            );
+            
+            if (byeMatches.length > 0) {
+                availableGroups.push({
+                    ...group,
+                    availableByeMatches: byeMatches.length,
+                    nextByeRound: Math.min(...byeMatches.map(m => m.round))
+                });
+            }
+        }
+        
+        return availableGroups;
+    }
 }
 
 // Create global instance
