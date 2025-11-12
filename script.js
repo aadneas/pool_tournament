@@ -1626,6 +1626,11 @@ class PoolTournamentApp {
     renderResults() {
         const container = document.getElementById('results-container');
         
+        // If results container doesn't exist, skip rendering
+        if (!container) {
+            return;
+        }
+        
         if (this.results.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">

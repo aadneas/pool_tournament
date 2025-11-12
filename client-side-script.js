@@ -1461,7 +1461,12 @@ class TournamentManager {
     async getAvailableGroupsForInsertion() {
         const groupsData = await this.getGroups();
         
+        console.log('Group stage:', groupsData.stage);
+        console.log('Current round:', groupsData.currentRound);
+        console.log('Total groups:', groupsData.groups.length);
+        
         if (groupsData.stage !== 'in-progress') {
+            console.log('Group stage not in progress');
             return [];
         }
 
@@ -1469,12 +1474,24 @@ class TournamentManager {
         const availableGroups = [];
         
         for (const group of groupsData.groups) {
-            const byeMatches = groupsData.matches.filter(m => 
-                m.groupId === group.id && 
+            const allGroupMatches = groupsData.matches.filter(m => m.groupId === group.id);
+            const byeMatches = allGroupMatches.filter(m => 
                 m.isBye && 
                 m.round >= groupsData.currentRound &&
                 !m.hasRecordedResult
             );
+            
+            console.log(`Group ${group.name}:`, {
+                totalMatches: allGroupMatches.length,
+                byeMatches: byeMatches.length,
+                playerCount: group.players.length,
+                byeMatchDetails: byeMatches.map(m => ({
+                    round: m.round,
+                    isBye: m.isBye,
+                    hasRecordedResult: m.hasRecordedResult,
+                    player1: m.player1?.name
+                }))
+            });
             
             if (byeMatches.length > 0) {
                 availableGroups.push({
@@ -1485,6 +1502,7 @@ class TournamentManager {
             }
         }
         
+        console.log('Available groups for insertion:', availableGroups.length);
         return availableGroups;
     }
 }
