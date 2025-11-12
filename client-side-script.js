@@ -593,6 +593,7 @@ class TournamentManager {
             throw new Error('Invalid admin password');
         }
 
+        // Check bracket matches first
         const bracket = await this.getBrackets();
         let matchFound = false;
 
@@ -602,16 +603,23 @@ class TournamentManager {
                 match.scheduledDate = date;
                 match.scheduledTime = time;
                 matchFound = true;
-                break;
+                await this.setBrackets(bracket);
+                return { success: true, message: 'Match scheduled successfully' };
             }
         }
 
-        if (!matchFound) {
-            throw new Error('Match not found');
+        // If not found in brackets, check group matches
+        const groupsData = await this.getGroups();
+        const groupMatch = groupsData.matches.find(m => m.id === matchId);
+        
+        if (groupMatch) {
+            groupMatch.scheduledDate = date;
+            groupMatch.scheduledTime = time;
+            await this.setGroups(groupsData);
+            return { success: true, message: 'Group match scheduled successfully' };
         }
 
-        await this.setBrackets(bracket);
-        return { success: true, message: 'Match scheduled successfully' };
+        throw new Error('Match not found');
     }
 
     // Swiss System Logic for Group Stage
