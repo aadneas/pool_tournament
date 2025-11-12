@@ -2475,8 +2475,8 @@ class PoolTournamentApp {
             const byeMatches = this.groups.matches.filter(m => 
                 m.groupId === groupId && 
                 m.isBye && 
-                m.round >= this.groups.currentRound &&
-                !m.hasRecordedResult
+                m.round >= this.groups.currentRound
+                // Note: Allow bye matches even if hasRecordedResult is true
             ).sort((a, b) => a.round - b.round);
             
             const nextByeMatch = byeMatches[0];

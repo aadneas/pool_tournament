@@ -1422,8 +1422,9 @@ class TournamentManager {
         const byeMatches = groupsData.matches.filter(m => 
             m.groupId === groupId && 
             m.isBye && 
-            m.round >= groupsData.currentRound &&
-            !m.hasRecordedResult
+            m.round >= groupsData.currentRound
+            // Note: We allow bye matches even if hasRecordedResult is true,
+            // since byes are auto-completed but can still be replaced
         );
 
         if (byeMatches.length === 0) {
@@ -1477,8 +1478,9 @@ class TournamentManager {
             const allGroupMatches = groupsData.matches.filter(m => m.groupId === group.id);
             const byeMatches = allGroupMatches.filter(m => 
                 m.isBye && 
-                m.round >= groupsData.currentRound &&
-                !m.hasRecordedResult
+                m.round >= groupsData.currentRound
+                // Note: We allow bye matches even if hasRecordedResult is true, 
+                // since byes are auto-completed but can still be replaced
             );
             
             console.log(`Group ${group.name}:`, {
