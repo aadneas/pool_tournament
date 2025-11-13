@@ -1047,18 +1047,16 @@ class TournamentManager {
                     }
                 }
             } else if (players.length >= 4) {
-                // 4+ player group: Check if top 2 players are tied and haven't played each other
-                if (players.length >= 2) {
-                    const top2 = players.slice(0, 2);
-                    const [player1, player2] = top2;
+                // 4+ player group: Check for tied players at the top
+                const topScore = players[0].groupWins;
+                const tiedPlayers = players.filter(p => p.groupWins === topScore && p.groupLosses === players[0].groupLosses);
+                
+                if (tiedPlayers.length >= 2) {
+                    const groupMatches = groupsData.matches.filter(m => m.groupId === group.id);
                     
-                    // Check if they're tied (same wins and losses)
-                    const areTied = player1.groupWins === player2.groupWins && 
-                                   player1.groupLosses === player2.groupLosses;
-                    
-                    if (areTied) {
-                        // Check if they've played each other
-                        const groupMatches = groupsData.matches.filter(m => m.groupId === group.id);
+                    if (tiedPlayers.length === 2) {
+                        // 2-way tie: Simple head-to-head if they haven't played
+                        const [player1, player2] = tiedPlayers;
                         const havePlayedEachOther = groupMatches.some(match => 
                             (match.player1?.id === player1.id && match.player2?.id === player2.id) ||
                             (match.player1?.id === player2.id && match.player2?.id === player1.id)
@@ -1081,7 +1079,52 @@ class TournamentManager {
                                 isTiebreaker: true
                             });
                         }
-                        // Note: No manual tiebreaker for 4+ groups - head-to-head always produces a winner
+                        // If they have played, head-to-head determines winner (no manual resolution needed)
+                        
+                    } else if (tiedPlayers.length >= 3) {
+                        // 3+ way tie: Use round-robin tiebreaker system like 3-player groups
+                        const tiebreakerRounds = groupMatches.filter(m => m.isTiebreaker && m.completed);
+                        const allPossiblePairs = [];
+                        
+                        // Generate all possible pairs from tied players
+                        for (let i = 0; i < tiedPlayers.length; i++) {
+                            for (let j = i + 1; j < tiedPlayers.length; j++) {
+                                allPossiblePairs.push([tiedPlayers[i], tiedPlayers[j]]);
+                            }
+                        }
+                        
+                        // Find pairs that haven't been played in tiebreaker rounds yet
+                        const unplayedPairs = allPossiblePairs.filter(([p1, p2]) => {
+                            return !tiebreakerRounds.some(match => 
+                                (match.player1?.id === p1.id && match.player2?.id === p2.id) ||
+                                (match.player1?.id === p2.id && match.player2?.id === p1.id)
+                            );
+                        });
+                        
+                        // Check if we've already played tiebreaker matches but still have a tie
+                        if (unplayedPairs.length === 0 && tiebreakerRounds.length > 0) {
+                            // All tiebreaker matches played but still tied - mark for manual resolution
+                            group.needsManualTiebreak = true;
+                        } else if (unplayedPairs.length > 0) {
+                            // Create tiebreaker matches for unplayed pairs
+                            for (const [player1, player2] of unplayedPairs) {
+                                tiebreakerMatches.push({
+                                    id: Date.now() + Math.random() * 1000,
+                                    groupId: group.id,
+                                    groupName: group.name,
+                                    round: nextRound,
+                                    player1: this.cleanPlayerForMatch(player1),
+                                    player2: this.cleanPlayerForMatch(player2),
+                                    winner: null,
+                                    completed: false,
+                                    scheduledDate: null,
+                                    scheduledTime: null,
+                                    hasRecordedResult: false,
+                                    isBye: false,
+                                    isTiebreaker: true
+                                });
+                            }
+                        }
                     }
                 }
             }
