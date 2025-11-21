@@ -1232,12 +1232,17 @@ class TournamentManager {
     }
 
     getHeadToHeadRecord(player1Id, player2Id, groupId, matches) {
+        // Convert IDs to numbers for consistent comparison
+        const p1Id = parseInt(player1Id);
+        const p2Id = parseInt(player2Id);
+        const gId = parseInt(groupId);
+        
         const headToHeadMatches = matches.filter(match => 
-            match.groupId === groupId &&
+            (match.groupId === gId || match.groupId === groupId) &&
             match.completed &&
             match.hasRecordedResult &&
-            ((match.player1?.id === player1Id && match.player2?.id === player2Id) ||
-             (match.player1?.id === player2Id && match.player2?.id === player1Id))
+            ((parseInt(match.player1?.id) === p1Id && parseInt(match.player2?.id) === p2Id) ||
+             (parseInt(match.player1?.id) === p2Id && parseInt(match.player2?.id) === p1Id))
         );
 
         if (headToHeadMatches.length === 0) {
@@ -1248,16 +1253,17 @@ class TournamentManager {
         let player2Wins = 0;
 
         headToHeadMatches.forEach(match => {
-            if (match.winner?.id === player1Id) {
+            const winnerId = parseInt(match.winner?.id);
+            if (winnerId === p1Id) {
                 player1Wins++;
-            } else if (match.winner?.id === player2Id) {
+            } else if (winnerId === p2Id) {
                 player2Wins++;
             }
         });
 
         return {
-            winner: player1Wins > player2Wins ? player1Id : 
-                   player2Wins > player1Wins ? player2Id : null,
+            winner: player1Wins > player2Wins ? p1Id : 
+                   player2Wins > player1Wins ? p2Id : null,
             record: `${player1Wins}-${player2Wins}`,
             player1Wins,
             player2Wins

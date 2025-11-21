@@ -1255,7 +1255,7 @@ class PoolTournamentApp {
                 console.log('Head-to-head result:', h2h);
                 
                 if (h2h.record !== "0-0") {
-                    const status = h2h.winner === playerId ? '✅ Ahead' : h2h.winner === tiedPlayer.id ? '❌ Behind' : '🟡 Even';
+                    const status = h2h.winner === parseInt(playerId) ? '✅ Ahead' : h2h.winner === parseInt(tiedPlayer.id) ? '❌ Behind' : '🟡 Even';
                     detailsHtml += `<div><strong>vs ${tiedPlayer.name}:</strong> ${h2h.record} ${status}</div>`;
                 } else {
                     detailsHtml += `<div><strong>vs ${tiedPlayer.name}:</strong> No games played</div>`;
