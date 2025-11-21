@@ -1243,7 +1243,17 @@ class PoolTournamentApp {
             `;
 
             tiedPlayers.forEach(tiedPlayer => {
+                console.log('Head-to-head check:', {
+                    playerId, 
+                    tiedPlayerId: tiedPlayer.id, 
+                    groupId,
+                    totalMatches: this.groups.matches.length,
+                    groupMatches: this.groups.matches.filter(m => m.groupId === groupId).length
+                });
+                
                 const h2h = this.tournamentManager.getHeadToHeadRecord(playerId, tiedPlayer.id, groupId, this.groups.matches);
+                console.log('Head-to-head result:', h2h);
+                
                 if (h2h.record !== "0-0") {
                     const status = h2h.winner === playerId ? '✅ Ahead' : h2h.winner === tiedPlayer.id ? '❌ Behind' : '🟡 Even';
                     detailsHtml += `<div><strong>vs ${tiedPlayer.name}:</strong> ${h2h.record} ${status}</div>`;
